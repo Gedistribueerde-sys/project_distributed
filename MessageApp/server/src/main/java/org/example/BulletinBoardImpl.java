@@ -24,6 +24,7 @@ public class BulletinBoardImpl implements BulletinBoard {
 
     @Override
     public void add(int i, String v, String t) throws RemoteException {
+        i = i % N; // get the modulo of I with N so that i is in bounds
         if (board.get(i) == null) board.add(i, new ArrayList<>());
         board.get(i).add(new Pair(v, t));
     }
@@ -39,6 +40,7 @@ public class BulletinBoardImpl implements BulletinBoard {
 
     @Override
     public Pair get(int i, String b) throws RemoteException {
+        i = i % N; // get the modulo of I with N so that i is in bounds
         if (board.get(i) == null) return null;
         List<Pair> lijst = board.get(i);
         String t = Encryption.B(b);
