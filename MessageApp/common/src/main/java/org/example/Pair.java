@@ -3,8 +3,6 @@ package org.example;
 import java.io.Serializable;
 
 public class Pair implements Serializable {
-    private static final long serialVersionUID = 1L;
-
     private String v;
     private String t;
 
