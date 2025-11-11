@@ -13,6 +13,8 @@ import javafx.scene.control.Label;
 import javafx.stage.Stage;
 
 public class Main {
+    public static final Controller controller = new Controller();
+
     public static void main(String[] args) throws RemoteException, NotBoundException {
 
         /*
@@ -22,18 +24,9 @@ public class Main {
         System.out.println("Response from server: " + response);
 
         */
-        Application.launch(SimpleWindow.class, args);
+
+        Application.launch(GUI.class, args);
 
     }
-    public static class SimpleWindow extends Application {
-        @Override
-        public void start(Stage stage) {
-            Label label = new Label("Hallo JavaFX vanuit main!");
-            Scene scene = new Scene(label, 400, 200);
 
-            stage.setTitle("Eenvoudig JavaFX-venster");
-            stage.setScene(scene);
-            stage.show();
-        }
-    }
 }
