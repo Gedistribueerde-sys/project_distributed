@@ -8,5 +8,5 @@ public interface BulletinBoard extends Remote {
 
     void add(int i, String v, String t ) throws RemoteException;
     Pair get(int i , String b) throws RemoteException;
-
+    int getSize() throws RemoteException;
 }

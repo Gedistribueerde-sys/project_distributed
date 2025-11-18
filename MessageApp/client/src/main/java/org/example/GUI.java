@@ -1,6 +1,7 @@
 package org.example;
 
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -11,7 +12,9 @@ import javafx.stage.Stage;
 public class GUI extends Application {
 
     private Controller controller;
-
+    private ListView<String> chatList = new ListView<>();
+    private Label userLabel;
+    // eerste methode die automatisch opgeroepen wordt
     @Override
     public void start(Stage stage) {
         this.controller = Main.controller; // abstractielaag gebruiken
@@ -72,49 +75,200 @@ public class GUI extends Application {
     }
 
     private void showChatScene(Stage stage) {
-        String username = controller.getCurrentUser();
-        if (username == null) {
-            showLoginScene(stage);
-            return;
-        }
 
+        updateChatList(); // Vul de lijst met de controller data
+
+        Label leftTitle = new Label("Chats");
+        leftTitle.setStyle("-fx-font-size: 16; -fx-font-weight: bold;");
+
+        VBox leftBox = new VBox(10, leftTitle, chatList);
+        leftBox.setPadding(new Insets(10));
+        leftBox.setPrefWidth(250);
+        leftBox.setStyle("-fx-background-color: #f0f0f0;");
+        VBox.setVgrow(chatList, Priority.ALWAYS);
+
+        // ----- RECHTS: chatvenster -----
         ListView<String> messagesView = new ListView<>();
-        messagesView.getItems().addAll(controller.getMessages());
+        messagesView.getItems().add("Selecteer een chat om te beginnen...");
+        messagesView.setStyle("-fx-background-color: white;");
 
-        TextField messageField = new TextField();
-        messageField.setPromptText("Typ je bericht...");
+        // Debug-venster met key/idx/tag info
+        TextArea stateView = new TextArea();
+        stateView.setEditable(false);
+        stateView.setPrefRowCount(5);
+        stateView.setWrapText(true);
+        stateView.setStyle("-fx-font-family: monospace; -fx-font-size: 11;");
 
-        Button sendButton = new Button("Send");
+        // top bar
+        userLabel = new Label("Ingelogd als: " + controller.getCurrentUser());
+        userLabel.setStyle("-fx-font-weight: bold;");
         Button logoutButton = new Button("Logout");
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        HBox topBar = new HBox(10, userLabel, spacer, logoutButton);
 
-        Label infoLabel = new Label("Ingelogd als: " + username);
+        topBar.setAlignment(Pos.CENTER_LEFT);
+        topBar.setStyle("-fx-padding: 5; -fx-border-color: #cccccc; -fx-border-width: 0 0 1 0;");
 
-        HBox inputBox = new HBox(10, messageField, sendButton);
+        // bottom input
+        TextField messageField = new TextField();
+        messageField.setPromptText("Typ een bericht...");
+        messageField.setStyle("-fx-background-radius: 20; -fx-padding: 8;");
+        Button sendButton = new Button("Send");
+
+        HBox inputBar = new HBox(10, messageField, sendButton);
+        inputBar.setPadding(new Insets(5, 0, 0, 0));
         HBox.setHgrow(messageField, Priority.ALWAYS);
 
-        HBox topBar = new HBox(10, infoLabel, logoutButton);
-        topBar.setAlignment(Pos.CENTER_LEFT);
+        VBox rightBox = new VBox(10, topBar, stateView, messagesView, inputBar);
+        rightBox.setPadding(new Insets(10));
+        VBox.setVgrow(messagesView, Priority.ALWAYS);
 
-        VBox root = new VBox(10, topBar, messagesView, inputBox);
-        root.setPadding(new Insets(10));
+        // ----- SPLITPANE (links + rechts) -----
+        SplitPane splitPane = new SplitPane(leftBox, rightBox);
+        splitPane.setDividerPositions(0.30);
 
-        Scene chatScene = new Scene(root, 600, 400);
-        stage.setScene(chatScene);
+        Scene scene = new Scene(splitPane, 900, 600);
+        stage.setScene(scene);
+        stage.show();
 
-        sendButton.setOnAction(e -> {
-            String text = messageField.getText();
-            if (text == null || text.isBlank()) return;
-
-            controller.sendMessage(text);
-            messageField.clear();
-
-            messagesView.getItems().setAll(controller.getMessages());
-            messagesView.scrollTo(messagesView.getItems().size() - 1);
-        });
-
+        // ----- INTERACTIE LOGICA -----
         logoutButton.setOnAction(e -> {
             controller.logout();
             showLoginScene(stage);
         });
+        // wanneer een chat geselecteerd wordt
+        // 0 = "➕ Nieuwe chat (BUMP)"
+        // 1..n = bestaande chats
+        chatList.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal == null) return;
+            messagesView.getItems().clear();
+
+            int selectedIndex = chatList.getSelectionModel().getSelectedIndex();
+            if (selectedIndex < 0) return;
+            // hier bump optie afhandelen
+            if (newVal.startsWith("➕")) {
+                // BUMP-entry aangeklikt
+                stateView.clear();
+                messagesView.getItems().add("Gebruik de dialoog om een chat te starten...");
+
+                // Alles wat “groot” is uitstellen tot ná dit event
+                Platform.runLater(() -> {
+                    showNewChatDialog(stage);   // dialog openen
+                    updateChatList();          // lijst herladen
+                    chatList.getSelectionModel().clearSelection(); // selectie wissen (optioneel)
+                });
+
+            } else {
+                // Bestaande chat
+                String debugText = controller.getDebugStateForIndex(selectedIndex);
+                stateView.setText(debugText);
+
+                messagesView.getItems().add("Berichten voor: " + newVal);
+                messagesView.getItems().add("Nu klaar om het protocol te starten!");
+            }
+        });
+
     }
+    // vraagt aan de controller welke chats er zijn en vult de ListView
+    private void updateChatList() {
+        if (chatList != null) {
+            chatList.getItems().setAll(controller.getChatNames());
+        }
+    }
+    // dit is voor de bump
+    private void showNewChatDialog(Stage parentStage) {
+        // dialoog maken
+        Dialog<String> dialog = new Dialog<>();
+        dialog.setTitle("Nieuwe Chat (Bump Simulatie)");
+        dialog.setHeaderText(
+                "1. Kopieer jouw code en stuur die naar de andere gebruiker.\n" +
+                        "2. Plak hieronder de code die jij van de ander krijgt om de chat op te zetten."
+        );
+
+        ButtonType acceptButtonType = new ButtonType("Accepteer Code", ButtonBar.ButtonData.OK_DONE);
+        ButtonType cancelButtonType = new ButtonType("Annuleer", ButtonBar.ButtonData.CANCEL_CLOSE);
+        dialog.getDialogPane().getButtonTypes().addAll(acceptButtonType, cancelButtonType);
+
+        VBox content = new VBox(10);
+        content.setPadding(new Insets(15));
+
+        // --- eigen tekstvak (read-only + kopieerknop) ---
+        TextArea myBumpArea = new TextArea();
+        myBumpArea.setEditable(false);
+        myBumpArea.setWrapText(true);
+        myBumpArea.setPrefRowCount(3);
+
+        Button copyToClipboardButton = new Button("Kopieer mijn code");
+
+        // --- tekstvak voor de ANDER (in te plakken) ---
+        TextArea bumpInputArea = new TextArea();
+        bumpInputArea.setPromptText("Plak hier de ontvangen code (naam|key|idx|tag)");
+        bumpInputArea.setWrapText(true);
+        bumpInputArea.setPrefRowCount(3);
+
+        Label statusLabel = new Label("Jouw code wordt gegenereerd...");
+        statusLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: blue;");
+        //Alles netjes onder elkaar in een VBox in de dialoog.
+        content.getChildren().addAll(
+                new Label("JOUW BUMP-CODE:"),
+                myBumpArea,
+                copyToClipboardButton,
+                new Separator(),
+                new Label("CODE VAN DE ANDER:"),
+                bumpInputArea,
+                new Separator(),
+                statusLabel
+        );
+
+        dialog.getDialogPane().setContent(content);
+
+        // --- de eigen bump-string genereren ---
+        // in de controller ; dit wordt dan in eht tekstveld gelaten
+        try {
+            String myBump = controller.generateOwnBumpString();
+            myBumpArea.setText(myBump);
+            statusLabel.setText("Kopieer jouw code en stuur die naar de andere gebruiker.");
+        } catch (Exception ex) {
+            statusLabel.setText("Fout bij genereren van jouw code: " + ex.getMessage());
+            ex.printStackTrace();
+        }
+
+        // Kopieer-knop
+        copyToClipboardButton.setOnAction(e -> {
+            final javafx.scene.input.Clipboard clipboard = javafx.scene.input.Clipboard.getSystemClipboard();
+            final javafx.scene.input.ClipboardContent clipboardContent = new javafx.scene.input.ClipboardContent();
+            clipboardContent.putString(myBumpArea.getText());
+            clipboard.setContent(clipboardContent);
+            statusLabel.setText("Code gekopieerd naar klembord!");
+        });
+
+        // Accept-knop
+        final Button acceptBtn = (Button) dialog.getDialogPane().lookupButton(acceptButtonType);
+        acceptBtn.disableProperty().bind(bumpInputArea.textProperty().isEmpty());
+
+        acceptBtn.setOnAction(event -> {
+            event.consume();
+
+            String myCode = myBumpArea.getText().trim();
+            String otherCode = bumpInputArea.getText().trim();
+
+            if (otherCode.isEmpty()) {
+                statusLabel.setText("Plak eerst de code van de andere gebruiker.");
+                return;
+            }
+
+            if (controller.acceptNewChat(myCode, otherCode)) {
+                statusLabel.setText("Chat succesvol aangemaakt!");
+                dialog.close();
+            } else {
+                statusLabel.setText("Fout bij accepteren: controleer de codes.");
+            }
+        });
+
+        dialog.setResultConverter(dbtn -> null);
+        dialog.showAndWait();
+    }
+
+
 }

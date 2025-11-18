@@ -63,4 +63,9 @@ public class BulletinBoardImpl implements BulletinBoard {
         // Niets gevonden met deze tag
         return null;
     }
+
+    @Override
+    public int getSize() throws RemoteException {
+        return N;
+    }
 }
