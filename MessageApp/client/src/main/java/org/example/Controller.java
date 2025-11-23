@@ -234,6 +234,11 @@ public class Controller {
 
         return received;
     }
+    public String getRecipientName(int listIndex) {
+        int idx = listIndex - 1;
+        if (idx < 0 || idx >= activeChats.size()) return "?";
+        return activeChats.get(idx).recipient;
+    }
 
 
 }

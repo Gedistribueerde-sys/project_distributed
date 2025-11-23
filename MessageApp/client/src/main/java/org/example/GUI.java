@@ -9,6 +9,8 @@ import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
 
+import java.rmi.RemoteException;
+
 public class GUI extends Application {
 
     private Controller controller;
@@ -167,8 +169,8 @@ public class GUI extends Application {
                 String debugText = controller.getDebugStateForIndex(selectedIndex);
                 stateView.setText(debugText);
 
-                messagesView.getItems().add("Berichten voor: " + newVal);
-                messagesView.getItems().add("Nu klaar om het protocol te starten!");
+                messagesView.getItems().add(newVal);
+
             }
         });
         sendButton.setOnAction(e -> {
@@ -191,7 +193,34 @@ public class GUI extends Application {
             String debugText = controller.getDebugStateForIndex(selectedIndex);
             stateView.setText(debugText);
         });
+        fetchButton.setOnAction(e -> {
+            int selectedIndex = chatList.getSelectionModel().getSelectedIndex();
+            if (selectedIndex <= 0) {
+                new Alert(Alert.AlertType.WARNING, "Selecteer eerst een bestaande chat.").showAndWait();
+                return;
+            }
 
+            try {
+                System.out.println("GUI: fetchMessages voor index " + selectedIndex);
+                var nieuw = controller.fetchMessages(selectedIndex);
+
+                if (nieuw.isEmpty()) {
+                    messagesView.getItems().add("Geen nieuwe berichten.");
+                } else {
+                    for (String m : nieuw) {
+                        messagesView.getItems().add(controller.getRecipientName(selectedIndex) + " : " + m);
+                    }
+                }
+
+                // Debug bijwerken na recv-ketting update
+                String debugText = controller.getDebugStateForIndex(selectedIndex);
+                stateView.setText(debugText);
+
+            } catch (RemoteException ex) {
+                ex.printStackTrace();
+                new Alert(Alert.AlertType.ERROR, "Fout bij ophalen van berichten.").showAndWait();
+            }
+        });
 
     }
     // vraagt aan de controller welke chats er zijn en vult de ListView
