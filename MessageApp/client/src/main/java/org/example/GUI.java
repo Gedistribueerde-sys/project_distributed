@@ -17,7 +17,7 @@ public class GUI extends Application {
     // eerste methode die automatisch opgeroepen wordt
     @Override
     public void start(Stage stage) {
-        this.controller = Main.controller; // abstractielaag gebruiken
+        this.controller = Client.controller; // abstractielaag gebruiken
 
         stage.setTitle("Message App");
         showLoginScene(stage);
@@ -115,8 +115,11 @@ public class GUI extends Application {
         messageField.setPromptText("Typ een bericht...");
         messageField.setStyle("-fx-background-radius: 20; -fx-padding: 8;");
         Button sendButton = new Button("Send");
+        Button fetchButton = new Button("Fetch");
 
-        HBox inputBar = new HBox(10, messageField, sendButton);
+
+
+        HBox inputBar = new HBox(10, messageField, sendButton, fetchButton);
         inputBar.setPadding(new Insets(5, 0, 0, 0));
         HBox.setHgrow(messageField, Priority.ALWAYS);
 
@@ -168,6 +171,27 @@ public class GUI extends Application {
                 messagesView.getItems().add("Nu klaar om het protocol te starten!");
             }
         });
+        sendButton.setOnAction(e -> {
+            String text = messageField.getText().trim();
+            if (text.isEmpty()) return;
+
+            int selectedIndex = chatList.getSelectionModel().getSelectedIndex();
+            if (selectedIndex <= 0) {
+                new Alert(Alert.AlertType.WARNING, "Selecteer eerst een bestaande chat.").showAndWait();
+                return;
+            }
+
+            controller.sendMessage(selectedIndex, text);
+
+            // Toon lokaal in de messagesView
+            messagesView.getItems().add("Ik: " + text);
+            messageField.clear();
+
+            // Debug-paneel updaten (ketting is vooruit gegaan)
+            String debugText = controller.getDebugStateForIndex(selectedIndex);
+            stateView.setText(debugText);
+        });
+
 
     }
     // vraagt aan de controller welke chats er zijn en vult de ListView

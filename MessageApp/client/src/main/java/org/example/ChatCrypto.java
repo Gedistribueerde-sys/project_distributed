@@ -6,9 +6,10 @@ import java.security.*;
 import java.util.Base64;
 
 public class ChatCrypto {
+    static final private SecureRandom secureRandom = new SecureRandom();
     public static BumpObject init() throws Exception {
         // random number genrator to do start crypto operations
-        SecureRandom secureRandom = new SecureRandom();
+
 
         // Genereert een veilig, uniform getal tussen 0 long max value
         long rawId = secureRandom.nextLong();
@@ -43,4 +44,40 @@ public class ChatCrypto {
         byte[] decodedKey = Base64.getDecoder().decode(keyString);
         return new SecretKeySpec(decodedKey, 0, decodedKey.length, "AES");
     }
+    public static long makeNewIdx() {
+        return  secureRandom.nextLong() & Long.MAX_VALUE;
+    }
+    public static String makeNewTag() {
+        byte[] tagBytes = new byte[32];
+        secureRandom.nextBytes(tagBytes);
+        return Base64.getEncoder().encodeToString(tagBytes);
+    }
+    // gpt stelt GCM-mode, IV's of best practices voor
+    public static String encrypt(String message, SecretKey secretKey) throws Exception {
+        Cipher cipher = Cipher.getInstance("AES");
+        cipher.init(Cipher.ENCRYPT_MODE, secretKey);
+        byte[] encrypted = cipher.doFinal(message.getBytes("UTF-8"));
+        return Base64.getEncoder().encodeToString(encrypted);
+    }
+    public static String decrypt(String base64Cipher, SecretKey secretKey) throws Exception {
+        Cipher cipher = Cipher.getInstance("AES");
+        cipher.init(Cipher.DECRYPT_MODE, secretKey);
+        byte[] decoded = Base64.getDecoder().decode(base64Cipher);
+        byte[] decrypted = cipher.doFinal(decoded);
+        return new String(decrypted, "UTF-8");
+    }
+    // update de private key naar een nieuwe private key
+    // gelijk voor bijde clients
+    public static SecretKey makeNewSecretKey(SecretKey oldKey) throws NoSuchAlgorithmException {
+        byte[] oldBytes = oldKey.getEncoded();
+
+        // Hash de key met SHA-256
+        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+        byte[] hash = digest.digest(oldBytes);
+
+        // Gebruik de eerste 32 bytes als nieuwe AES-256 key
+        return new SecretKeySpec(hash, 0, 32, "AES");
+
+    }
+
 }

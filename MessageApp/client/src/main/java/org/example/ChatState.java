@@ -21,7 +21,7 @@ public class ChatState {
                      SecretKey sendKey, long sendIdx, String sendTag,
                      SecretKey recvKey, long recvIdx, String recvTag) {
 
-        this.recipient = recipient;
+                this.recipient = recipient;
 
         this.sendKey = sendKey;
         this.sendIdx = sendIdx;
