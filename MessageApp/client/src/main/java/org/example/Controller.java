@@ -1,5 +1,7 @@
 package org.example;
 
+import javafx.beans.property.BooleanProperty;
+import javafx.beans.property.SimpleBooleanProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,7 +18,18 @@ public class Controller {
     private String currentUser;
     private final BulletinBoard bulletinBoard;
 
+    private final BooleanProperty loggedIn = new SimpleBooleanProperty(false);
+    private final BooleanProperty loggedOut = new SimpleBooleanProperty(false);
+
     public Controller(BulletinBoard bulletinBoard) {this.bulletinBoard = bulletinBoard;}
+
+    public BooleanProperty loggedInProperty() {
+        return loggedIn;
+    }
+
+    public BooleanProperty loggedOutProperty() {
+        return loggedOut;
+    }
 
     public boolean register(String username, String password) {
 
@@ -34,8 +47,11 @@ public class Controller {
         if (loaded) {
             currentUser = username;
             log.info("User {} logged in successfully.", username);
+            loggedIn.set(true);
+            loggedOut.set(false);
         } else {
             log.info("Failed login attempt for user: {}", username);
+            loggedIn.set(false);
         }
         return loaded;
     }
@@ -47,6 +63,8 @@ public class Controller {
     public void logout() {
         log.info("User {} logged out.", currentUser);
         currentUser = null;
+        loggedIn.set(false);
+        loggedOut.set(true);
     }
     public String generateOwnBumpString() throws Exception {
         // 1. Generate a new BumpObject
