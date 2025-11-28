@@ -3,25 +3,23 @@ package org.example;
 import javax.crypto.SecretKey;
 import java.util.Base64;
 
-// Hulpklasse om de staat van één chat op te slaan (beide richtingen)
+// This class holds the state of a chat with a specific recipient
 public class ChatState {
     public final String recipient;
 
-    // Richting: jij -> recipient
     public SecretKey sendKey;
     public long sendIdx;
     public String sendTag;
 
-    // Richting: recipient -> jij
     public SecretKey recvKey;
     public long recvIdx;
     public String recvTag;
 
     public ChatState(String recipient,
                      SecretKey sendKey, long sendIdx, String sendTag,
-                     SecretKey recvKey, long recvIdx, String recvTag) {
-
-                this.recipient = recipient;
+                     SecretKey recvKey, long recvIdx, String recvTag)
+    {
+        this.recipient = recipient;
 
         this.sendKey = sendKey;
         this.sendIdx = sendIdx;
@@ -34,10 +32,10 @@ public class ChatState {
 
     @Override
     public String toString() {
-        return "Chat met " + recipient;
+        return "Chat with " + recipient;
     }
 
-    // Handige debug-info voor de GUI
+    // This is for debug purposes only
     public String debugInfo() {
         return "OUT (jij → " + recipient + ")\n" +
                 " key = " + keyToBase64(sendKey) + "\n" +

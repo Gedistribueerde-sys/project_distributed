@@ -1,5 +1,8 @@
 package org.example;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javax.crypto.SecretKey;
 import java.rmi.RemoteException;
 import java.util.ArrayList;
@@ -7,22 +10,21 @@ import java.util.Base64;
 import java.util.List;
 
 public class Controller {
-
-
+    private static final Logger log = LoggerFactory.getLogger(Controller.class);
     private final List<ChatState> activeChats = new ArrayList<>();
     private final KeyStoreImpl keyStore = new KeyStoreImpl();
     private String currentUser;
-    private BulletinBoard bulletinBoard;
+    private final BulletinBoard bulletinBoard;
 
     public Controller(BulletinBoard bulletinBoard) {this.bulletinBoard = bulletinBoard;}
 
     public boolean register(String username, String password) {
-        // gewoon proberen
+
         boolean created = keyStore.makeKeyStore(username, password);
         if (created) {
-            System.out.println("Keystore aangemaakt voor gebruiker: " + username);
+            log.info("Keystore created for user: {}", username);
         } else {
-            System.out.println("Registratie mislukt (keystore kon niet worden gemaakt)");
+            log.info("Failed to create keystore for user: {}", username);
         }
         return created;
     }
@@ -31,9 +33,9 @@ public class Controller {
         boolean loaded = keyStore.loadKeyStore(username, password);
         if (loaded) {
             currentUser = username;
-            System.out.println("Login succesvol als: " + username);
+            log.info("User {} logged in successfully.", username);
         } else {
-            System.out.println("Login mislukt: fout wachtwoord of gebruiker bestaat niet.");
+            log.info("Failed login attempt for user: {}", username);
         }
         return loaded;
     }
@@ -43,77 +45,76 @@ public class Controller {
     }
 
     public void logout() {
+        log.info("User {} logged out.", currentUser);
         currentUser = null;
-        System.out.println("Uitgelogd.");
     }
     public String generateOwnBumpString() throws Exception {
-        // 1. Genereer de cryptografische elementen
+        // 1. Generate a new BumpObject
         BumpObject bump = ChatCrypto.init();
 
-        // 2. Haal de key op en codeer die naar Base64
+        // 2. Get the SecretKey and encode it to Base64
         SecretKey initialKey = bump.getKey();
         String keyString = Base64.getEncoder().encodeToString(initialKey.getEncoded());
 
-        // 3. Maak de string: NAAM|KEY|IDX|TAG
+        // 3. Create the bump string
         return currentUser + "|" + keyString + "|" + bump.getIdx() + "|" + bump.getTag();
     }
 
 
 
-    //  Methode om de bump-string te accepteren
+    //  Method to accept a new chat based on the received bump string
     public boolean acceptNewChat(String myBumpString, String otherBumpString) {
         try {
             String[] myParts = myBumpString.split("\\|");
             String[] otherParts = otherBumpString.split("\\|");
 
             if (myParts.length != 4 || otherParts.length != 4) {
-                System.err.println("Ongeldig bump-formaat");
+                log.error("Invalid bump string format");
                 return false;
             }
 
             String myName = myParts[0];
             String otherName = otherParts[0];
 
-            // Optioneel: check of myName gelijk is aan currentUser
+            // Check if myName matches the logged-in user
             if (!myName.equals(currentUser)) {
-                System.err.println("Waarschuwing: naam in eigen bumpstring ≠ ingelogde user");
+                log.error("Bump string name {} does not match logged-in user {}", myName, currentUser);
             }
 
-            // Geen dubbele chat met dezelfde persoon
+            // No duplicate chats allowed
             boolean alreadyExists = activeChats.stream()
                     .anyMatch(c -> c.recipient.equals(otherName));
             if (alreadyExists) {
-                System.err.println("Chat met " + otherName + " bestaat al");
+                log.error("Chat with {} already exists", otherName);
                 return false;
             }
 
-            // JOUW richting (jij -> ander) komt uit je eigen bumpstring
             SecretKey myKey = ChatCrypto.decodeKey(myParts[1]);
             long myIdx = Long.parseLong(myParts[2]);
             String myTag = myParts[3];
 
-            // HUN richting (ander -> jij) komt uit hun bumpstring
             SecretKey otherKey = ChatCrypto.decodeKey(otherParts[1]);
             long otherIdx = Long.parseLong(otherParts[2]);
             String otherTag = otherParts[3];
 
             ChatState chat = new ChatState(
                     otherName,
-                    myKey, myIdx, myTag,         // OUT: jij -> ander
-                    otherKey, otherIdx, otherTag // IN: ander -> jij
+                    myKey, myIdx, myTag,
+                    otherKey, otherIdx, otherTag
             );
 
             activeChats.add(chat);
             return true;
 
         } catch (Exception e) {
-            System.err.println("Fout bij het accepteren van de bump string: " + e.getMessage());
+            log.error("Exception while accepting new chat", e);
+
             return false;
         }
     }
     public String getDebugStateForIndex(int listIndex) {
-        // listIndex = index in de ListView
-        // 0 = "➕ Nieuwe chat (BUMP)"
+        // listIndex = index in the ListView
+        // 0 = "➕ New Chat (BUMP)"
         int idx = listIndex - 1;
         if (idx < 0 || idx >= activeChats.size()) return "";
         return activeChats.get(idx).debugInfo();
@@ -121,68 +122,60 @@ public class Controller {
 
 
 
-    //  Haalt de namen van de chats op voor de GUI
+    //  Retrieves the names of the chats for the GUI
     public List<String> getChatNames() {
         List<String> names = new ArrayList<>();
-        names.add("➕ Nieuwe chat (BUMP)");
+        names.add("➕ New Chat (BUMP)");
         activeChats.forEach(chat -> names.add(chat.toString()));
         return names;
     }
 
     /**
      *
-     * @param listIndex : index in de lijst (0 = nieuwe chat, 1 = eerste chat, etc)
-     * @param message : het bericht om te versturen
+     * @param chatIndex : index in the list (0 = new chat, 1 = first chat, etc)
+     * @param message : the message to send
      */
-    public void sendMessage(int listIndex, String message) {
-        // 0 = "➕ Nieuwe chat (BUMP)", echte chats beginnen op 1
-        int idx = listIndex - 1;
-        if (idx < 0 || idx >= activeChats.size()) {
-            System.err.println("Geen geldige chat geselecteerd.");
+    public void sendMessage(int chatIndex, String message) {
+        // 0 = "➕ New Chat (BUMP)", real chats start at 1
+        chatIndex -= 1;
+        if (chatIndex < 0 || chatIndex >= activeChats.size()) {
+            log.error("No valid chat selected for sending message.");
             return;
         }
 
-        ChatState chat = activeChats.get(idx);
+        ChatState chat = activeChats.get(chatIndex);
 
         try {
-            // 1. nieuwe idx' en tag' genereren (voor de volgende stap in de ketting)
+            // 1. generate new idx' and tag' (for the next step in the chain)
             long nextIdx = ChatCrypto.makeNewIdx();
             String nextTag = ChatCrypto.makeNewTag();
 
             // 2. payload m || nextIdx || nextTag
-            StringBuilder sb = new StringBuilder();
-            sb.append(message);
-            sb.append("_");
-            sb.append(nextIdx);
-            sb.append("_");
-            sb.append(nextTag);
 
-            String payload = sb.toString();
-            System.out.println("Te versleutelen payload: " + payload);
+            String payload = message + "_" + nextIdx + "_" + nextTag;
+            log.info("To be encrypted payload: {}", payload);
 
-            // 3. encrypt met de huidige outKey van deze chat
+            // 3. encrypt with the current outKey of this chat
             SecretKey outKey = chat.sendKey;
             String encryptedMessage = ChatCrypto.encrypt(payload, outKey);
 
-            // 4. t = B(b) berekenen met huidige outTag (b)
+            // 4. t = B(b) calculate with current outTag (b)
             String currentTag = chat.sendTag;
-            String t = Encryption.B(currentTag); // hier hashen we de tag , server moet dit ook doen
+            String t = Encryption.preimageToTag(currentTag); // here we hash the tag, the server must do this too
 
-            // 5. versturen naar de server op index = current outIdx
+            // 5. send to the server at index = current outIdx
             long currentIdx = chat.sendIdx;
             bulletinBoard.add((int) currentIdx, encryptedMessage, t);
 
-            System.out.println("Versleuteld bericht gepost op idx " +
-                    currentIdx + " met t = B(tag).");
+            log.info("Sent encrypted message at idx {} with tag {}", currentIdx, t);
 
-            // 6. lokale state updaten naar idx', tag'
+            // 6. update local state to idx', tag'
             chat.sendIdx = nextIdx;
-            chat.sendTag =nextTag;
-            chat.sendKey = ChatCrypto.makeNewSecretKey(outKey);// key updaten voor forward secrecy
+            chat.sendTag = nextTag;
+            chat.sendKey = ChatCrypto.makeNewSecretKey(outKey);// update key for forward secrecy
 
         } catch (Exception e) {
-            System.err.println("Fout bij versturen: " + e.getMessage());
-            e.printStackTrace();
+            log.error("Exception while sending message", e);
         }
     }
     public List<String> fetchMessages(int listIndex) throws RemoteException {
@@ -190,8 +183,8 @@ public class Controller {
 
         int idx = listIndex - 1;
         if (idx < 0 || idx >= activeChats.size()) {
-            System.err.println("Geen geldige chat geselecteerd.");
-            return received; // lege lijst
+            log.error("No valid chat selected for fetching messages.");
+            return received; // empty list
         }
 
         ChatState chat = activeChats.get(idx);
@@ -199,16 +192,16 @@ public class Controller {
         while (true) {
             Pair pair = bulletinBoard.get((int) chat.recvIdx, chat.recvTag);
             if (pair == null) {
-                // Geen bericht gevonden, stoppen met ophalen
+                // No message found, stop fetching
                 break;
             } else {
-                String encryptedMessage = pair.getV();
+                String encryptedMessage = pair.value();
                 try {
                     String payload = ChatCrypto.decrypt(encryptedMessage, chat.recvKey);
 
                     String[] parts = payload.split("_", 3);
                     if (parts.length != 3) {
-                        System.err.println("Ongeldig payload-formaat: " + payload);
+                        log.error("Invalid payload format: {}", payload);
                         break;
                     }
 
@@ -216,17 +209,16 @@ public class Controller {
                     long nextIdx = Long.parseLong(parts[1]);
                     String nextTag = parts[2];
 
-                    System.out.println("Ontvangen bericht: " + receivedMessage);
+                    log.info("Received message: {}", receivedMessage);
                     received.add(receivedMessage);
 
-                    // ketting vooruit
+                    // advance chain
                     chat.recvIdx = nextIdx;
                     chat.recvTag = nextTag;
                     chat.recvKey = ChatCrypto.makeNewSecretKey(chat.recvKey);
 
                 } catch (Exception e) {
-                    System.err.println("Fout bij decrypten: " + e.getMessage());
-                    e.printStackTrace();
+                    log.error("Exception while decrypting message", e);
                     break;
                 }
             }

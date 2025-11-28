@@ -1,64 +1,67 @@
 package org.example;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javax.crypto.*;
 import javax.crypto.spec.SecretKeySpec;
 import java.security.*;
 import java.util.Base64;
 
 public class ChatCrypto {
+    private static final Logger log = LoggerFactory.getLogger(ChatCrypto.class);
     static final private SecureRandom secureRandom = new SecureRandom();
+
     public static BumpObject init() throws Exception {
-        // random number genrator to do start crypto operations
 
+        // generates a random long for the chat idx
+        long randomNum = secureRandom.nextLong();
 
-        // Genereert een veilig, uniform getal tussen 0 long max value
-        long rawId = secureRandom.nextLong();
+        long idx = randomNum & Long.MAX_VALUE;
+        log.info("Generated Chat ID: {}", idx);
 
-        // Zorg dat het positief is (Math.abs kan falen bij Long.MIN_VALUE, dus bitmask is veiliger)
-        //  1xxxxxxx  (Het willekeurige getal, start met 1 dus NEGATIEF)
-        //& 01111111  (Long.MAX_VALUE, start met 0 dus POSITIEF)
-        //  --------
-        //  0xxxxxxx  (Het resultaat)
-
-        long idx = rawId & Long.MAX_VALUE;
-        System.out.println("Generated Chat ID: " + idx);
-
-
-        //genereren van de tag : 32 bytes = 256 bits
+        // generate tag: 32 bytes = 256 bits
         byte[] tagBytes = new byte[32];
         secureRandom.nextBytes(tagBytes);
-        // encodeer eht naar een string
+        // encode to Base64 string
         String initialTag = Base64.getEncoder().encodeToString(tagBytes);
 
-        //genereren van een initiele key
+        // generate AES-256 key
         KeyGenerator keyGen = KeyGenerator.getInstance("AES");
-        // Init een sleuetel die 256 groot is
         keyGen.init(256, secureRandom);
         SecretKey secretKey = keyGen.generateKey();
 
-
         return new BumpObject( idx, initialTag,secretKey);
     }
-    // Decodeer de Base64 key string terug naar een SecretKey object
+
+
+    // Decode a Base64-encoded string back into a SecretKey
     public static SecretKey decodeKey(String keyString) {
         byte[] decodedKey = Base64.getDecoder().decode(keyString);
         return new SecretKeySpec(decodedKey, 0, decodedKey.length, "AES");
     }
+
+
     public static long makeNewIdx() {
-        return  secureRandom.nextLong() & Long.MAX_VALUE;
+        return  secureRandom.nextLong() & Long.MAX_VALUE; // zorg dat het positief is
     }
+
+
     public static String makeNewTag() {
         byte[] tagBytes = new byte[32];
         secureRandom.nextBytes(tagBytes);
         return Base64.getEncoder().encodeToString(tagBytes);
     }
-    // gpt stelt GCM-mode, IV's of best practices voor
+
+
     public static String encrypt(String message, SecretKey secretKey) throws Exception {
         Cipher cipher = Cipher.getInstance("AES");
         cipher.init(Cipher.ENCRYPT_MODE, secretKey);
         byte[] encrypted = cipher.doFinal(message.getBytes("UTF-8"));
         return Base64.getEncoder().encodeToString(encrypted);
     }
+
+
     public static String decrypt(String base64Cipher, SecretKey secretKey) throws Exception {
         Cipher cipher = Cipher.getInstance("AES");
         cipher.init(Cipher.DECRYPT_MODE, secretKey);
@@ -66,16 +69,17 @@ public class ChatCrypto {
         byte[] decrypted = cipher.doFinal(decoded);
         return new String(decrypted, "UTF-8");
     }
-    // update de private key naar een nieuwe private key
-    // gelijk voor bijde clients
+
+
+    // Derive a new SecretKey from an old one using SHA-256
     public static SecretKey makeNewSecretKey(SecretKey oldKey) throws NoSuchAlgorithmException {
         byte[] oldBytes = oldKey.getEncoded();
 
-        // Hash de key met SHA-256
+        // Hash the old key bytes using SHA-256
         MessageDigest digest = MessageDigest.getInstance("SHA-256");
         byte[] hash = digest.digest(oldBytes);
 
-        // Gebruik de eerste 32 bytes als nieuwe AES-256 key
+        // Use the hash as the new key
         return new SecretKeySpec(hash, 0, 32, "AES");
 
     }

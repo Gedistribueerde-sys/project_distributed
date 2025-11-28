@@ -4,66 +4,59 @@ import java.rmi.RemoteException;
 import java.util.*;
 
 public class BulletinBoardImpl implements BulletinBoard {
-    private final int N = 1024; // board size
-    private ArrayList<Set<Pair>> board;
+    private final int BOARD_SIZE = 1024;
+
+    private final ArrayList<Set<Pair>> board;
     BulletinBoardImpl() {
-        // Initialiseer het bord met lege sets
-        board = new ArrayList<>(N);
-        for (int i = 0; i < N; i++) {
+        // Initialize the board with empty sets
+        board = new ArrayList<>(BOARD_SIZE);
+        for (int i = 0; i < BOARD_SIZE; i++) {
             board.add(new HashSet<>());
         }
     }
 
 
     @Override
-    public void add(int i, String v, String t) throws RemoteException {
-        // Breng i binnen het bereik [0, N-1]
-        i = ((i % N) + N) % N;
-        System.out.println("Adding to board at index " + i + ": <" + v + ", " + t + ">");
-        Set<Pair> cell = board.get(i);
+    public void add(int idx, String value, String tag) throws RemoteException {
+        // Bring idx within the range [0, N-1]
+        idx = ((idx % BOARD_SIZE) + BOARD_SIZE) % BOARD_SIZE; // This calculation ensures idx is positive
+        System.out.println("Adding to board at index " + idx + ": <" + value + ", " + tag + ">");
+        Set<Pair> cell = board.get(idx);
         if (cell == null) {
             cell = new HashSet<>();
-            board.set(i, cell);
+            board.set(idx, cell);
         }
 
-        // Voeg het paar <v, t> toe aan de Set
-        cell.add(new Pair(v, t));
+        // Add the pair <v, t> to the Set
+        cell.add(new Pair(value, tag));
     }
 
-    /**
-     * get(i, b): Let t = B(b).
-     * If <v, t> ∈ B[i] for some value v, return v and remove <v, t> from B[i].
-     * Otherwise return ⊥ (hier: null), en laat B[i] ongewijzigd.
-     */
+
     @Override
-    public Pair get(int i, String b) throws RemoteException {
+    public Pair get(int idx, String preimage) throws RemoteException {
 
-        // Breng i binnen het bereik [0, N-1]
-        i = ((i % N) + N) % N;
-        System.out.println("Getting from board at index " + i + " with b = " + b);
+        // Bring idx within the range [0, N-1]
+        idx = ((idx % BOARD_SIZE) + BOARD_SIZE) % BOARD_SIZE; // This calculation ensures idx is positive
+        System.out.println("Getting from board at index " + idx + " with preimage = " + preimage);
 
-
-        Set<Pair> cell = board.get(i);
+        Set<Pair> cell = board.get(idx);
         if (cell == null || cell.isEmpty()) {
             return null;
         }
 
-        // Bereken t = B(b)
-        String t = Encryption.B(b);
+        String t = Encryption.preimageToTag(preimage);
 
-        // Gebruik een iterator zodat we veilig kunnen verwijderen tijdens iteratie
+        // Use an iterator so we can safely remove during iteration
         Iterator<Pair> it = cell.iterator();
         while (it.hasNext()) {
             Pair p = it.next();
-            if (p.getT().equals(t)) {
-                // Verwijder dit element uit de Set
+            if (p.tag().equals(t)) {
                 it.remove();
-                // Geef het gevonden pair terug
                 return p;
             }
         }
 
-        // Niets gevonden met deze tag
+        // Nothing found for the idx and preimage/tag
         return null;
     }
 

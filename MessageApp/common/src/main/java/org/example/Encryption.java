@@ -3,13 +3,13 @@ import java.nio.charset.*;
 import java.security.*;
 public class Encryption {
     /**
-     * B(b): hashfunctie van een String b naar een hex-string t.
-     * Hier gebruiken we SHA-256.
+     * B(b): hash function from a String b to a hex-string t.
+     * We use SHA-256 here.
      */
-    public static String B(String b) {
+    public static String preimageToTag(String preimage) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256"); // digest object
-            byte[] hash = digest.digest(b.getBytes(StandardCharsets.UTF_8)); // digest object gebruiken om hash te maken
+            byte[] hash = digest.digest(preimage.getBytes(StandardCharsets.UTF_8)); // use digest object to create hash
 
             // bytes -> hex
             StringBuilder sb = new StringBuilder(hash.length * 2);
@@ -18,7 +18,7 @@ public class Encryption {
             }
             return sb.toString();
         } catch (NoSuchAlgorithmException e) {
-            // In een normale JVM is SHA-256 altijd aanwezig
+            // In a normal JVM, SHA-256 is always present
             throw new RuntimeException("SHA-256 algorithm not available", e);
         }
     }

@@ -1,23 +1,20 @@
 package org.example;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.nio.file.*;
 import java.security.KeyStore;
 
 public class KeyStoreImpl {
+    private static final Logger log = LoggerFactory.getLogger(KeyStoreImpl.class);
     private KeyStore keyStore;
     private static final String KEYSTORE_TYPE = "PKCS12";
     private static final String EXTENSION = ".p12";
 
     private static final Path BASE_DIR = Paths.get("MessageApp", "client");
 
-    /**
-     * this function needs to create a keystore for the user with the given username and password
-     * the keystore name = username + ".jks" or another extension
-     * the keystore needs to be encrypted with the given password
-     * return true if the keystore was created successfully, false otherwise
-     */
     public boolean makeKeyStore(String username, String password) {
         if (username == null || username.isBlank()
                 || password == null || password.isBlank()) {
@@ -32,27 +29,25 @@ public class KeyStoreImpl {
 
             // als je NIET wil overschrijven:
             if (file.exists()) {
-                System.out.println("Keystore bestaat al voor gebruiker: " + username);
+                log.info("Keystore already exists for user {}", username);
                 return false;
             }
 
             try (FileOutputStream fos = new FileOutputStream(file)) {
                 ks.store(fos, password.toCharArray());
+            } catch (Exception e) {
+                log.error("Exception while saving keystore for user {}", username, e);
+                return false;
             }
 
             this.keyStore = ks;
             return true;
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Exception while creating keystore for user {}", username, e);
             return false;
         }
     }
 
-
-    /**
-     * loads the private keystore into memory if the username and password are correct
-     * return true if the keystore was loaded successfully, false otherwise
-     */
     public boolean loadKeyStore(String username, String password) {
         if (username == null || username.isBlank()
                 || password == null || password.isBlank()) {
@@ -72,7 +67,7 @@ public class KeyStoreImpl {
             this.keyStore = ks;
             return true;
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Exception while loading keystore for user {}", username, e);
             return false;
         }
     }
@@ -81,11 +76,12 @@ public class KeyStoreImpl {
     public KeyStore getKeyStore() {
         return keyStore;
     }
+
     private File getKeystoreFile(String username) throws IOException {
         // zorg dat de map bestaat
         Files.createDirectories(BASE_DIR);
         Path ksPath = BASE_DIR.resolve(username + EXTENSION);
-        System.out.println("Keystore path: " + ksPath.toAbsolutePath());
+        log.info("Keystore path for user {}: {}", username, ksPath.toAbsolutePath());
         return ksPath.toFile();
     }
 }
