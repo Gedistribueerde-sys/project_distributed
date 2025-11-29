@@ -54,7 +54,7 @@ public class ChatCrypto {
     }
 
 
-    public static String encrypt(String message, SecretKey secretKey) throws Exception {
+    public static String encryptMessage(String message, SecretKey secretKey) throws Exception {
         Cipher cipher = Cipher.getInstance("AES");
         cipher.init(Cipher.ENCRYPT_MODE, secretKey);
         byte[] encrypted = cipher.doFinal(message.getBytes("UTF-8"));

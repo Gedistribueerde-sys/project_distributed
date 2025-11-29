@@ -173,9 +173,9 @@ public class Controller {
             String payload = message + "_" + nextIdx + "_" + nextTag;
             log.info("To be encrypted payload: {}", payload);
 
-            // 3. encrypt with the current outKey of this chat
+            // 3. encryptMessage with the current outKey of this chat
             SecretKey outKey = chat.sendKey;
-            String encryptedMessage = ChatCrypto.encrypt(payload, outKey);
+            String encryptedMessage = ChatCrypto.encryptMessage(payload, outKey);
 
             // 4. t = B(b) calculate with current outTag (b)
             String currentTag = chat.sendTag;

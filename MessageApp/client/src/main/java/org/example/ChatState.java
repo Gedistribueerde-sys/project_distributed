@@ -37,11 +37,11 @@ public class ChatState {
 
     // This is for debug purposes only
     public String debugInfo() {
-        return "OUT (jij → " + recipient + ")\n" +
+        return "OUT (you → " + recipient + ")\n" +
                 " key = " + keyToBase64(sendKey) + "\n" +
                 " idx = " + sendIdx + "\n" +
                 " tag = " + sendTag + "\n\n" +
-                "IN (" + recipient + " → jij)\n" +
+                "IN (" + recipient + " → you)\n" +
                 " key = " + keyToBase64(recvKey) + "\n" +
                 " idx = " + recvIdx + "\n" +
                 " tag = " + recvTag;

@@ -1,63 +1,61 @@
 package org.example;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.rmi.RemoteException;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap; // Thread-safe for RMI
 
 public class BulletinBoardImpl implements BulletinBoard {
+    private static final Logger logger = LoggerFactory.getLogger(BulletinBoardImpl.class);
     private final int BOARD_SIZE = 1024;
 
-    private final ArrayList<Set<Pair>> board;
-    BulletinBoardImpl() {
-        // Initialize the board with empty sets
+    // Map: Key = Tag (String), Value = Message (String)
+    private final List<Map<String, String>> board;
+
+    public BulletinBoardImpl() {
         board = new ArrayList<>(BOARD_SIZE);
         for (int i = 0; i < BOARD_SIZE; i++) {
-            board.add(new HashSet<>());
+            //
+            board.add(new ConcurrentHashMap<>());
         }
     }
-
 
     @Override
     public void add(int idx, String value, String tag) throws RemoteException {
-        // Bring idx within the range [0, N-1]
-        idx = ((idx % BOARD_SIZE) + BOARD_SIZE) % BOARD_SIZE; // This calculation ensures idx is positive
-        System.out.println("Adding to board at index " + idx + ": <" + value + ", " + tag + ">");
-        Set<Pair> cell = board.get(idx);
-        if (cell == null) {
-            cell = new HashSet<>();
-            board.set(idx, cell);
+        int index = computeIndex(idx);
+        logger.info("Adding to board at index {}: <{}, {}>", index, value, tag);
+
+        // O(1) - Instant access
+        Map<String, String> cell = board.get(index);
+        synchronized (cell) {
+            cell.put(tag, value);
         }
-
-        // Add the pair <v, t> to the Set
-        cell.add(new Pair(value, tag));
     }
-
 
     @Override
     public Pair get(int idx, String preimage) throws RemoteException {
+        int index = computeIndex(idx);
+        logger.info("Getting from board at index {}", index);
 
-        // Bring idx within the range [0, N-1]
-        idx = ((idx % BOARD_SIZE) + BOARD_SIZE) % BOARD_SIZE; // This calculation ensures idx is positive
-        System.out.println("Getting from board at index " + idx + " with preimage = " + preimage);
+        Map<String, String> cell = board.get(index);
 
-        Set<Pair> cell = board.get(idx);
-        if (cell == null || cell.isEmpty()) {
-            return null;
+        String tag = Encryption.preimageToTag(preimage);
+
+        String value;
+        synchronized (cell) {
+            value = cell.remove(tag);
         }
 
-        String t = Encryption.preimageToTag(preimage);
-
-        // Use an iterator so we can safely remove during iteration
-        Iterator<Pair> it = cell.iterator();
-        while (it.hasNext()) {
-            Pair p = it.next();
-            if (p.tag().equals(t)) {
-                it.remove();
-                return p;
-            }
+        if (value != null) {
+            return new Pair(value, tag);
         }
 
-        // Nothing found for the idx and preimage/tag
         return null;
     }
 
+    private int computeIndex(int idx) {
+        return ((idx % BOARD_SIZE) + BOARD_SIZE) % BOARD_SIZE;
+    }
 }
