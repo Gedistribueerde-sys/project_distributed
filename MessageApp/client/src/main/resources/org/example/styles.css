@@ -26,12 +26,57 @@
     -fx-font-size: 11;
 }
 
-.messages-view {
-    -fx-background-color: white;
-}
-
 .message-field {
     -fx-background-radius: 20;
     -fx-padding: 8;
 }
 
+/* messages view styling */
+.messages-view {
+    -fx-background-color: white;
+}
+
+.messages-view .list-cell,
+.messages-view .list-cell:filled,
+.messages-view .list-cell:even,
+.messages-view .list-cell:odd {
+    -fx-background-color: transparent;
+    -fx-border-width: 0;
+    -fx-padding: 0;
+}
+
+/* avoid highlight filling cell in messages view */
+.messages-view .list-cell:filled:selected,
+.messages-view .list-cell:filled:focused {
+    -fx-background-color: transparent;
+}
+
+/* container for a message cell */
+.message-cell-hbox {
+    -fx-padding: 6 10;
+}
+
+/* bubble base */
+.message-bubble {
+    -fx-padding: 8 12;
+    -fx-background-radius: 16;
+    -fx-font-size: 13px;
+    -fx-max-width: 420px;
+    -fx-wrap-text: true;
+    -fx-text-fill: -fx-text-base-color;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 2, 0.2, 0, 1);
+}
+
+/* incoming = light grey */
+.message-bubble.incoming {
+    -fx-background-color: #d8d8d8;
+}
+
+/* outgoing = baby blue */
+.message-bubble.outgoing {
+    -fx-background-color: #9bd2ff;
+}
+
+/* hbox alignment helpers */
+.message-cell-hbox.left { -fx-alignment: center-left; }
+.message-cell-hbox.right { -fx-alignment: center-right; }

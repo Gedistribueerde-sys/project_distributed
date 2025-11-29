@@ -22,7 +22,7 @@ public class ChatController {
     @FXML
     private TextArea stateView;
     @FXML
-    private ListView<String> messagesView;
+    private ListView<Message> messagesView;
     @FXML
     private TextField messageField;
 
@@ -42,14 +42,15 @@ public class ChatController {
         // This is called after the FXML file has been loaded
         chatList.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal == null) return;
-            messagesView.getItems().clear();
 
             int selectedIndex = chatList.getSelectionModel().getSelectedIndex();
             if (selectedIndex < 0) return;
 
+            messagesView.getItems().clear();
+
             if (newVal.startsWith("➕")) {
                 stateView.clear();
-                messagesView.getItems().add("Use the dialog to start a chat...");
+                messagesView.getItems().add(new Message("system", "Use the dialog to start a chat..."));
                 Platform.runLater(() -> {
                     showNewChatDialog();
                     updateChatList();
@@ -58,13 +59,16 @@ public class ChatController {
             } else {
                 String debugText = controller.getDebugStateForIndex(selectedIndex);
                 stateView.setText(debugText);
-                messagesView.getItems().add(newVal);
+                // show a header message with the chat name (keeps previous behavior but uses Message model)
+                messagesView.getItems().add(new Message(controller.getRecipientName(selectedIndex), newVal));
             }
         });
     }
 
     public void setup() {
         userLabel.setText("Logged in as: " + controller.getCurrentUser());
+        // set the custom cell factory now that controller/current user is available
+        messagesView.setCellFactory(lv -> new MessageCell(controller.getCurrentUser()));
         updateChatList();
     }
 
@@ -86,7 +90,8 @@ public class ChatController {
         }
 
         controller.sendMessage(selectedIndex, text);
-        messagesView.getItems().add("Me: " + text);
+        // add as a Message with sender = current user so the cell renders as outgoing
+        messagesView.getItems().add(new Message(controller.getCurrentUser(), text));
         messageField.clear();
         String debugText = controller.getDebugStateForIndex(selectedIndex);
         stateView.setText(debugText);
@@ -105,10 +110,10 @@ public class ChatController {
             var newMessages = controller.fetchMessages(selectedIndex);
 
             if (newMessages.isEmpty()) {
-                messagesView.getItems().add("No new messages.");
+                messagesView.getItems().add(new Message("system", "No new messages."));
             } else {
                 for (String m : newMessages) {
-                    messagesView.getItems().add(controller.getRecipientName(selectedIndex) + " : " + m);
+                    messagesView.getItems().add(new Message(controller.getRecipientName(selectedIndex), m));
                 }
             }
             String debugText = controller.getDebugStateForIndex(selectedIndex);
