@@ -8,3 +8,7 @@
 
 ## Sources
 - https://protobuf.dev/overview/
+- https://protobuf.dev/getting-started/javatutorial/
+
+## Downloading dependencies
+- https://central.sonatype.com/

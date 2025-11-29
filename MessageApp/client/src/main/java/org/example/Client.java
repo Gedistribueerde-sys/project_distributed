@@ -1,12 +1,11 @@
 package org.example;
 
+import javafx.application.Application;
+
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
-
-
-import javafx.application.Application;
 
 public class Client {
     public static  Controller controller;

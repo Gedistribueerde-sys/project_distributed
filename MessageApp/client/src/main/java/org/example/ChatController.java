@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.rmi.RemoteException;
+import java.util.List;
 
 public class ChatController {
 
@@ -107,7 +108,7 @@ public class ChatController {
 
         try {
             log.info("GUI: fetchMessages for index {}", selectedIndex);
-            var newMessages = controller.fetchMessages(selectedIndex);
+            List<String> newMessages = controller.fetchMessages(selectedIndex);
 
             if (newMessages.isEmpty()) {
                 messagesView.getItems().add(new Message("system", "No new messages."));

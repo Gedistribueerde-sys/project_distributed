@@ -1,0 +1,16 @@
+- so instead of transforming to hex to put in the bulletin board the tag, just use raw bytes, faster and less overhead
+- when receiving key from another client but not giving yours to him, we need to be able to have one-way communication
+- make sure the client app doesn't crash when server is offline for a while (buffering and queuing to send messages later?)
+- storing and updating keys in keystore should be correcter / robuster
+- bulletin board index should everywhere be int
+- gui should be better / cleaner / nicer / ...
+- function names should be changed
+- logout is not implemented
+- storing messages -> history management + JSON serialization
+- make sure before sending to check receiving messages
+
+--- Advanced ---
+
+- supporting recoverability of corrupted states
+- the N (size of the board) should be able to grow: Increasing scalability -> partitioning the BB in chunks
+- Tackling Denial-of-Service attacks

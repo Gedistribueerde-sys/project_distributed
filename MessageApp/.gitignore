@@ -5,6 +5,7 @@ target/
 .kotlin
 
 ### IntelliJ IDEA ###
+.idea
 .idea/modules.xml
 .idea/jarRepositories.xml
 .idea/compiler.xml
@@ -95,3 +96,4 @@ jacoco.exec
 # Ignore Node/Vite-related files if you ever add a web UI
 node_modules/
 dist/
+*.p12
