@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package org.example;
+
+option java_package = "org.example.proto";
+option java_outer_classname = "ChatProto";
+
+message ChatPayload {
+  string message = 1;
+  int64 next_idx = 2;
+  bytes next_tag = 3;
+}

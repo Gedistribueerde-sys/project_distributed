@@ -37,6 +37,11 @@
                 <artifactId>logback-classic</artifactId>
                 <version>1.5.21</version>
             </dependency>
+            <dependency>
+                    <groupId>com.google.protobuf</groupId>
+                    <artifactId>protobuf-java</artifactId>
+                    <version>4.33.1</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -51,6 +56,22 @@
                         <source>25</source>
                         <target>25</target>
                     </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>io.github.ascopes</groupId>
+                    <artifactId>protobuf-maven-plugin</artifactId>
+                    <version>4.0.2</version>
+                    <configuration>
+                        <javaEnabled>true</javaEnabled>
+                        <protoc>4.33.1</protoc>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <goals>
+                                <goal>generate</goal>
+                            </goals>
+                        </execution>
+                    </executions>
                 </plugin>
             </plugins>
         </pluginManagement>

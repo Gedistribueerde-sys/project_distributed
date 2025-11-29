@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.crypto.*;
+import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.security.*;
 import java.util.Base64;
@@ -47,29 +48,52 @@ public class ChatCrypto {
     }
 
 
-    public static String makeNewTag() {
+    public static byte[] makeNewTag() {
         byte[] tagBytes = new byte[32];
         secureRandom.nextBytes(tagBytes);
+        return tagBytes;
+    }
+    
+    public static String tagToBase64(byte[] tagBytes) {
         return Base64.getEncoder().encodeToString(tagBytes);
     }
 
+    public static byte[] encryptPayloadBytes(byte[] payload, SecretKey secretKey) throws Exception {
+        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
 
-    public static String encryptMessage(String message, SecretKey secretKey) throws Exception {
-        Cipher cipher = Cipher.getInstance("AES");
-        cipher.init(Cipher.ENCRYPT_MODE, secretKey);
-        byte[] encrypted = cipher.doFinal(message.getBytes("UTF-8"));
-        return Base64.getEncoder().encodeToString(encrypted);
+        // Generate random IV (12 bytes is recommended for GCM)
+        byte[] iv = new byte[12];
+        secureRandom.nextBytes(iv);
+
+        GCMParameterSpec gcmSpec = new GCMParameterSpec(128, iv); // 128-bit authentication tag
+        cipher.init(Cipher.ENCRYPT_MODE, secretKey, gcmSpec);
+
+        byte[] ciphertext = cipher.doFinal(payload);
+
+        // Prepend IV to ciphertext (needed for decryption)
+        byte[] result = new byte[iv.length + ciphertext.length];
+        System.arraycopy(iv, 0, result, 0, iv.length);
+        System.arraycopy(ciphertext, 0, result, iv.length, ciphertext.length);
+
+        return result;
     }
 
+    public static byte[] decryptPayloadBytes(byte[] encryptedPayload, SecretKey secretKey) throws Exception {
+        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
 
-    public static String decrypt(String base64Cipher, SecretKey secretKey) throws Exception {
-        Cipher cipher = Cipher.getInstance("AES");
-        cipher.init(Cipher.DECRYPT_MODE, secretKey);
-        byte[] decoded = Base64.getDecoder().decode(base64Cipher);
-        byte[] decrypted = cipher.doFinal(decoded);
-        return new String(decrypted, "UTF-8");
+        // Extract IV from the beginning of the encrypted payload
+        byte[] iv = new byte[12];
+        System.arraycopy(encryptedPayload, 0, iv, 0, iv.length);
+
+        // Extract the actual ciphertext
+        byte[] ciphertext = new byte[encryptedPayload.length - iv.length];
+        System.arraycopy(encryptedPayload, iv.length, ciphertext, 0, ciphertext.length);
+
+        GCMParameterSpec gcmSpec = new GCMParameterSpec(128, iv);
+        cipher.init(Cipher.DECRYPT_MODE, secretKey, gcmSpec);
+
+        return cipher.doFinal(ciphertext);
     }
-
 
     // Derive a new SecretKey from an old one using SHA-256
     public static SecretKey makeNewSecretKey(SecretKey oldKey) throws NoSuchAlgorithmException {
@@ -83,5 +107,4 @@ public class ChatCrypto {
         return new SecretKeySpec(hash, 0, 32, "AES");
 
     }
-
 }

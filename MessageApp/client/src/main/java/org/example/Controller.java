@@ -1,7 +1,9 @@
 package org.example;
 
+import com.google.protobuf.ByteString;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.SimpleBooleanProperty;
+import org.example.proto.ChatProto;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -74,7 +76,7 @@ public class Controller {
         SecretKey initialKey = bump.getKey();
         String keyString = Base64.getEncoder().encodeToString(initialKey.getEncoded());
 
-        // 3. Create the bump string
+        // 3. Create the bump string (tag is already Base64 in BumpObject)
         return currentUser + "|" + keyString + "|" + bump.getIdx() + "|" + bump.getTag();
     }
 
@@ -164,33 +166,37 @@ public class Controller {
         ChatState chat = activeChats.get(chatIndex);
 
         try {
-            // 1. generate new idx' and tag' (for the next step in the chain)
+            // 1. Generate new idx' and tag'
             long nextIdx = ChatCrypto.makeNewIdx();
-            String nextTag = ChatCrypto.makeNewTag();
+            byte[] nextTagBytes = ChatCrypto.makeNewTag();
+            String nextTag = ChatCrypto.tagToBase64(nextTagBytes);
 
-            // 2. payload m || nextIdx || nextTag
+            // 2. Build protobuf message
+            ChatProto.ChatPayload chatPayload = ChatProto.ChatPayload.newBuilder()
+                    .setMessage(message)
+                    .setNextIdx(nextIdx)
+                    .setNextTag(ByteString.copyFrom(nextTagBytes))
+                    .build();
 
-            String payload = message + "_" + nextIdx + "_" + nextTag;
-            log.info("To be encrypted payload: {}", payload);
+            byte[] payloadBytes = chatPayload.toByteArray();
 
-            // 3. encryptMessage with the current outKey of this chat
-            SecretKey outKey = chat.sendKey;
-            String encryptedMessage = ChatCrypto.encryptMessage(payload, outKey);
+            // 3. Encrypt payload to bytes
+            byte[] encryptedPayload = ChatCrypto.encryptPayloadBytes(payloadBytes, chat.sendKey);
 
-            // 4. t = B(b) calculate with current outTag (b)
-            String currentTag = chat.sendTag;
-            String t = Encryption.preimageToTag(currentTag); // here we hash the tag, the server must do this too
+            // 4. Hash current tag (which is a Base64 string) to get the tag for the server
+            String tagString = Encryption.preimageToTag(chat.sendTag);
 
-            // 5. send to the server at index = current outIdx
-            long currentIdx = chat.sendIdx;
-            bulletinBoard.add((int) currentIdx, encryptedMessage, t);
+            log.info("SEND: currentTag(base64)={}, tagHash={}", chat.sendTag, tagString);
 
-            log.info("Sent encrypted message at idx {} with tag {}", currentIdx, t);
+            // 5. Send to server at current idx
+            bulletinBoard.add((int) chat.sendIdx, encryptedPayload, tagString);
 
-            // 6. update local state to idx', tag'
+            log.info("Sent encrypted message at idx {} with tag {}", chat.sendIdx, tagString);
+
+            // 6. Update local state to idx', tag', key'
             chat.sendIdx = nextIdx;
             chat.sendTag = nextTag;
-            chat.sendKey = ChatCrypto.makeNewSecretKey(outKey);// update key for forward secrecy
+            chat.sendKey = ChatCrypto.makeNewSecretKey(chat.sendKey);
 
         } catch (Exception e) {
             log.error("Exception while sending message", e);
@@ -208,37 +214,41 @@ public class Controller {
         ChatState chat = activeChats.get(idx);
 
         while (true) {
+            // Send tag as preimage to server (server will hash it)
+            log.info("FETCH: recvIdx={}, recvTag(base64)={}", chat.recvIdx, chat.recvTag);
+
             Pair pair = bulletinBoard.get((int) chat.recvIdx, chat.recvTag);
             if (pair == null) {
                 // No message found, stop fetching
+                log.info("FETCH: No message found");
                 break;
-            } else {
-                String encryptedMessage = pair.value();
-                try {
-                    String payload = ChatCrypto.decrypt(encryptedMessage, chat.recvKey);
+            }
 
-                    String[] parts = payload.split("_", 3);
-                    if (parts.length != 3) {
-                        log.error("Invalid payload format: {}", payload);
-                        break;
-                    }
+            log.info("FETCH: Found message!");
 
-                    String receivedMessage = parts[0];
-                    long nextIdx = Long.parseLong(parts[1]);
-                    String nextTag = parts[2];
+            try {
+                // Decrypt bytes directly
+                byte[] payloadBytes = ChatCrypto.decryptPayloadBytes(pair.value(), chat.recvKey);
 
-                    log.info("Received message: {}", receivedMessage);
-                    received.add(receivedMessage);
+                // Parse protobuf
+                ChatProto.ChatPayload chatPayload = ChatProto.ChatPayload.parseFrom(payloadBytes);
 
-                    // advance chain
-                    chat.recvIdx = nextIdx;
-                    chat.recvTag = nextTag;
-                    chat.recvKey = ChatCrypto.makeNewSecretKey(chat.recvKey);
+                String receivedMessage = chatPayload.getMessage();
+                long nextIdx = chatPayload.getNextIdx();
+                byte[] nextTagBytes = chatPayload.getNextTag().toByteArray();
+                String nextTag = ChatCrypto.tagToBase64(nextTagBytes);
 
-                } catch (Exception e) {
-                    log.error("Exception while decrypting message", e);
-                    break;
-                }
+                log.info("Received message: {}", receivedMessage);
+                received.add(receivedMessage);
+
+                // Advance chain
+                chat.recvIdx = nextIdx;
+                chat.recvTag = nextTag;
+                chat.recvKey = ChatCrypto.makeNewSecretKey(chat.recvKey);
+
+            } catch (Exception e) {
+                log.error("Exception while decrypting message", e);
+                break;
             }
         }
 

@@ -11,47 +11,52 @@ public class BulletinBoardImpl implements BulletinBoard {
     private static final Logger logger = LoggerFactory.getLogger(BulletinBoardImpl.class);
     private final int BOARD_SIZE = 1024;
 
-    // Map: Key = Tag (String), Value = Message (String)
-    private final List<Map<String, String>> board;
+    // Map: Key = Tag (String/Base64), Value = Encrypted Message (byte[])
+    private final List<Map<String, byte[]>> board;
 
     public BulletinBoardImpl() {
         board = new ArrayList<>(BOARD_SIZE);
         for (int i = 0; i < BOARD_SIZE; i++) {
-            //
             board.add(new ConcurrentHashMap<>());
         }
     }
 
     @Override
-    public void add(int idx, String value, String tag) throws RemoteException {
+    public void add(int idx, byte[] value, String tag) throws RemoteException {
         int index = computeIndex(idx);
-        logger.info("Adding to board at index {}: <{}, {}>", index, value, tag);
+        logger.info("ADD at index {}: tag={}, valueSize={} bytes", index, tag, value.length);
 
         // O(1) - Instant access
-        Map<String, String> cell = board.get(index);
+        Map<String, byte[]> cell = board.get(index);
         synchronized (cell) {
             cell.put(tag, value);
+            logger.info("ADD SUCCESS: Cell at index {} now has {} entries", index, cell.size());
         }
     }
 
     @Override
     public Pair get(int idx, String preimage) throws RemoteException {
         int index = computeIndex(idx);
-        logger.info("Getting from board at index {}", index);
+        logger.info("GET at index {}: preimage={}", index, preimage);
 
-        Map<String, String> cell = board.get(index);
+        Map<String, byte[]> cell = board.get(index);
 
+        // Hash the preimage to get the tag
         String tag = Encryption.preimageToTag(preimage);
+        logger.info("GET: computed tag from preimage: {}", tag);
 
-        String value;
+        byte[] value;
         synchronized (cell) {
+            logger.info("GET: Cell at index {} has {} entries. Keys: {}", index, cell.size(), cell.keySet());
             value = cell.remove(tag);
         }
 
         if (value != null) {
+            logger.info("GET SUCCESS: Found and removed message with tag {}", tag);
             return new Pair(value, tag);
         }
 
+        logger.info("GET FAILED: No message found with tag {}", tag);
         return null;
     }
 
