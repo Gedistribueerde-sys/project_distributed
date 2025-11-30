@@ -65,6 +65,7 @@ public class Controller {
     public void logout() {
         log.info("User {} logged out.", currentUser);
         currentUser = null;
+        activeChats.clear();
         loggedIn.set(false);
         loggedOut.set(true);
     }
@@ -198,28 +199,26 @@ public class Controller {
             chat.sendTag = nextTag;
             chat.sendKey = ChatCrypto.makeNewSecretKey(chat.sendKey);
 
+            chat.addSentMessage(message, currentUser);
         } catch (Exception e) {
             log.error("Exception while sending message", e);
         }
     }
-    public List<String> fetchMessages(int listIndex) throws RemoteException {
-        List<String> received = new ArrayList<>();
+    public boolean fetchMessages(int listIndex) throws RemoteException {
 
         int idx = listIndex - 1;
         if (idx < 0 || idx >= activeChats.size()) {
             log.error("No valid chat selected for fetching messages.");
-            return received; // empty list
+            return false;
         }
 
         ChatState chat = activeChats.get(idx);
 
         while (true) {
-            // Send tag as preimage to server (server will hash it)
             log.info("FETCH: recvIdx={}, recvTag(base64)={}", chat.recvIdx, chat.recvTag);
 
             Pair pair = bulletinBoard.get((int) chat.recvIdx, chat.recvTag);
             if (pair == null) {
-                // No message found, stop fetching
                 log.info("FETCH: No message found");
                 break;
             }
@@ -227,10 +226,7 @@ public class Controller {
             log.info("FETCH: Found message!");
 
             try {
-                // Decrypt bytes directly
                 byte[] payloadBytes = ChatCrypto.decryptPayloadBytes(pair.value(), chat.recvKey);
-
-                // Parse protobuf
                 ChatProto.ChatPayload chatPayload = ChatProto.ChatPayload.parseFrom(payloadBytes);
 
                 String receivedMessage = chatPayload.getMessage();
@@ -239,9 +235,9 @@ public class Controller {
                 String nextTag = ChatCrypto.tagToBase64(nextTagBytes);
 
                 log.info("Received message: {}", receivedMessage);
-                received.add(receivedMessage);
 
-                // Advance chain
+                chat.addReceivedMessage(receivedMessage);
+
                 chat.recvIdx = nextIdx;
                 chat.recvTag = nextTag;
                 chat.recvKey = ChatCrypto.makeNewSecretKey(chat.recvKey);
@@ -252,12 +248,19 @@ public class Controller {
             }
         }
 
-        return received;
+        return true;
     }
     public String getRecipientName(int listIndex) {
         int idx = listIndex - 1;
         if (idx < 0 || idx >= activeChats.size()) return "?";
         return activeChats.get(idx).recipient;
+    }
+    public List<Message> getMessagesForChat(int listIndex) {
+        int idx = listIndex - 1;
+        if (idx < 0 || idx >= activeChats.size()) {
+            return java.util.Collections.emptyList();
+        }
+        return activeChats.get(idx).getMessages();
     }
 
 

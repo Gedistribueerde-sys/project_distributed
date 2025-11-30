@@ -27,9 +27,9 @@ public class MessageCell extends ListCell<Message> {
             return;
         }
 
-        boolean outgoing = currentUser != null && currentUser.equals(item.getSender());
+        boolean outgoing = currentUser != null && currentUser.equals(item.sender());
 
-        Label bubble = new Label(item.getText());
+        Label bubble = new Label(item.text());
         bubble.setWrapText(true);
         bubble.getStyleClass().add("message-bubble");
         bubble.getStyleClass().add(outgoing ? "outgoing" : "incoming");

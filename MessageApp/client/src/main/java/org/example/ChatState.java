@@ -1,7 +1,9 @@
 package org.example;
 
 import javax.crypto.SecretKey;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.List;
 
 // This class holds the state of a chat with a specific recipient
 public class ChatState {
@@ -14,6 +16,9 @@ public class ChatState {
     public SecretKey recvKey;
     public long recvIdx;
     public String recvTag;
+
+    // In-memory message storage
+    private final List<Message> messages;
 
     public ChatState(String recipient,
                      SecretKey sendKey, long sendIdx, String sendTag,
@@ -28,6 +33,20 @@ public class ChatState {
         this.recvKey = recvKey;
         this.recvIdx = recvIdx;
         this.recvTag = recvTag;
+
+        this.messages = new ArrayList<>();
+    }
+
+    public List<Message> getMessages() {
+        return messages;
+    }
+
+    public void addSentMessage(String content, String sender) {
+        messages.add(new Message(sender, content));
+    }
+
+    public void addReceivedMessage(String content) {
+        messages.add(new Message(recipient, content));
     }
 
     @Override
@@ -38,17 +57,12 @@ public class ChatState {
     // This is for debug purposes only
     public String debugInfo() {
         return "OUT (you → " + recipient + ")\n" +
-                " key = " + keyToBase64(sendKey) + "\n" +
+                " key = " + ChatCrypto.keyToBase64(sendKey) + "\n" +
                 " idx = " + sendIdx + "\n" +
                 " tag = " + sendTag + "\n\n" +
                 "IN (" + recipient + " → you)\n" +
-                " key = " + keyToBase64(recvKey) + "\n" +
+                " key = " + ChatCrypto.keyToBase64(recvKey) + "\n" +
                 " idx = " + recvIdx + "\n" +
                 " tag = " + recvTag;
-    }
-
-    private String keyToBase64(SecretKey key) {
-        if (key == null || key.getEncoded() == null) return "-";
-        return Base64.getEncoder().encodeToString(key.getEncoded());
     }
 }

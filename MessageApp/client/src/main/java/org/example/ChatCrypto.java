@@ -42,6 +42,10 @@ public class ChatCrypto {
         return new SecretKeySpec(decodedKey, 0, decodedKey.length, "AES");
     }
 
+    public static String keyToBase64(SecretKey key) {
+        if (key == null || key.getEncoded() == null) return "-";
+        return Base64.getEncoder().encodeToString(key.getEncoded());
+    }
 
     public static long makeNewIdx() {
         return  secureRandom.nextLong() & Long.MAX_VALUE; // zorg dat het positief is

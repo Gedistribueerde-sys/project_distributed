@@ -6,9 +6,13 @@ import javafx.scene.control.*;
 import javafx.stage.Stage;
 import javafx.geometry.Insets;
 import javafx.scene.layout.VBox;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Scene;
+import javafx.stage.Modality;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.rmi.RemoteException;
 import java.util.List;
 
@@ -54,14 +58,14 @@ public class ChatController {
                 messagesView.getItems().add(new Message("system", "Use the dialog to start a chat..."));
                 Platform.runLater(() -> {
                     showNewChatDialog();
-                    updateChatList();
+                    // chatList is updated in showNewChatDialog if successful
                     chatList.getSelectionModel().clearSelection();
                 });
             } else {
+                // A chat is selected, refresh the message view and state
+                refreshMessagesView(selectedIndex);
                 String debugText = controller.getDebugStateForIndex(selectedIndex);
                 stateView.setText(debugText);
-                // show a header message with the chat name (keeps previous behavior but uses Message model)
-                messagesView.getItems().add(new Message(controller.getRecipientName(selectedIndex), newVal));
             }
         });
     }
@@ -91,8 +95,7 @@ public class ChatController {
         }
 
         controller.sendMessage(selectedIndex, text);
-        // add as a Message with sender = current user so the cell renders as outgoing
-        messagesView.getItems().add(new Message(controller.getCurrentUser(), text));
+        refreshMessagesView(selectedIndex);
         messageField.clear();
         String debugText = controller.getDebugStateForIndex(selectedIndex);
         stateView.setText(debugText);
@@ -108,14 +111,12 @@ public class ChatController {
 
         try {
             log.info("GUI: fetchMessages for index {}", selectedIndex);
-            List<String> newMessages = controller.fetchMessages(selectedIndex);
+            boolean newMessages = controller.fetchMessages(selectedIndex);
 
-            if (newMessages.isEmpty()) {
+            if (!newMessages) {
                 messagesView.getItems().add(new Message("system", "No new messages."));
             } else {
-                for (String m : newMessages) {
-                    messagesView.getItems().add(new Message(controller.getRecipientName(selectedIndex), m));
-                }
+                refreshMessagesView(selectedIndex);
             }
             String debugText = controller.getDebugStateForIndex(selectedIndex);
             stateView.setText(debugText);
@@ -125,6 +126,15 @@ public class ChatController {
         }
     }
 
+    private void refreshMessagesView(int selectedIndex) {
+        if (selectedIndex <= 0) {
+            messagesView.getItems().clear();
+            return;
+        }
+        List<Message> messages = controller.getMessagesForChat(selectedIndex);
+        messagesView.getItems().setAll(messages);
+    }
+
     private void updateChatList() {
         if (chatList != null) {
             chatList.getItems().setAll(controller.getChatNames());
@@ -132,87 +142,31 @@ public class ChatController {
     }
 
     private void showNewChatDialog() {
-        Dialog<String> dialog = new Dialog<>();
-        dialog.setTitle("New Chat (Bump Simulation)");
-        dialog.setHeaderText(
-                "1. Copy your code and send it to the other user.\n" +
-                        "2. Paste the code you receive from the other user below to set up the chat."
-        );
-
-        ButtonType acceptButtonType = new ButtonType("Accept Code", ButtonBar.ButtonData.OK_DONE);
-        ButtonType cancelButtonType = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
-        dialog.getDialogPane().getButtonTypes().addAll(acceptButtonType, cancelButtonType);
-
-        VBox content = new VBox(10);
-        content.setPadding(new Insets(15));
-
-        TextArea myBumpArea = new TextArea();
-        myBumpArea.setEditable(false);
-        myBumpArea.setWrapText(true);
-        myBumpArea.setPrefRowCount(3);
-
-        Button copyToClipboardButton = new Button("Copy my code");
-
-        TextArea bumpInputArea = new TextArea();
-        bumpInputArea.setPromptText("Paste the received code here (name|key|idx|tag)");
-        bumpInputArea.setWrapText(true);
-        bumpInputArea.setPrefRowCount(3);
-
-        Label statusLabel = new Label("Your code is being generated...");
-        statusLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: blue;");
-
-        content.getChildren().addAll(
-                new Label("YOUR BUMP-CODE:"),
-                myBumpArea,
-                copyToClipboardButton,
-                new Separator(),
-                new Label("OTHER'S CODE:"),
-                bumpInputArea,
-                new Separator(),
-                statusLabel
-        );
-
-        dialog.getDialogPane().setContent(content);
-
         try {
-            String myBump = controller.generateOwnBumpString();
-            myBumpArea.setText(myBump);
-            statusLabel.setText("Copy your code and send it to the other user.");
-        } catch (Exception ex) {
-            statusLabel.setText("Error generating your code: " + ex.getMessage());
-            log.error("Error generating your code", ex);
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("NewChatView.fxml"));
+            VBox page = loader.load();
+
+            Stage dialogStage = new Stage();
+            dialogStage.setTitle("New Chat (Bump Simulation)");
+            dialogStage.initModality(Modality.WINDOW_MODAL);
+            dialogStage.initOwner(stage);
+            Scene scene = new Scene(page);
+            dialogStage.setScene(scene);
+
+            NewChatController newChatController = loader.getController();
+            newChatController.setController(controller);
+            newChatController.setDialogStage(dialogStage);
+            newChatController.setup();
+
+            dialogStage.showAndWait();
+
+            if (newChatController.isAccepted()) {
+                updateChatList();
+            }
+
+        } catch (IOException e) {
+            log.error("Failed to load new chat dialog", e);
+            new Alert(Alert.AlertType.ERROR, "Could not open the new chat dialog.").showAndWait();
         }
-
-        copyToClipboardButton.setOnAction(e -> {
-            final javafx.scene.input.Clipboard clipboard = javafx.scene.input.Clipboard.getSystemClipboard();
-            final javafx.scene.input.ClipboardContent clipboardContent = new javafx.scene.input.ClipboardContent();
-            clipboardContent.putString(myBumpArea.getText());
-            clipboard.setContent(clipboardContent);
-            statusLabel.setText("Code copied to clipboard!");
-        });
-
-        final Button acceptBtn = (Button) dialog.getDialogPane().lookupButton(acceptButtonType);
-        acceptBtn.disableProperty().bind(bumpInputArea.textProperty().isEmpty());
-
-        acceptBtn.setOnAction(event -> {
-            event.consume();
-            String myCode = myBumpArea.getText().trim();
-            String otherCode = bumpInputArea.getText().trim();
-
-            if (otherCode.isEmpty()) {
-                statusLabel.setText("Please paste the other user's code first.");
-                return;
-            }
-
-            if (controller.acceptNewChat(myCode, otherCode)) {
-                statusLabel.setText("Chat created successfully!");
-                dialog.close();
-            } else {
-                statusLabel.setText("Error accepting: check the codes.");
-            }
-        });
-
-        dialog.setResultConverter(dbtn -> null);
-        dialog.showAndWait();
     }
 }
