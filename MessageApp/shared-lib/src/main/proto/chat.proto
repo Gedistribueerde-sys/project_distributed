@@ -10,3 +10,9 @@ message ChatPayload {
   int64 next_idx = 2;
   bytes next_tag = 3;
 }
+
+message KeyInfo {
+  bytes key = 1;       // AES key encoded as bytes
+  int64 idx = 2;       // Starting index
+  bytes tag = 3;       // Initial tag (32 bytes)
+}

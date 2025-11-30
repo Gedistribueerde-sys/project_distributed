@@ -10,7 +10,7 @@ import java.rmi.registry.Registry;
 public class Client {
     public static  Controller controller;
 
-    public static void main(String[] args) throws RemoteException, NotBoundException {
+    static void main(String[] args) throws RemoteException, NotBoundException {
 
 
         Registry locateRegistry = LocateRegistry.getRegistry();

@@ -4,6 +4,7 @@ import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
+import javafx.scene.control.TextField;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
 import javafx.stage.Stage;
@@ -15,21 +16,25 @@ public class NewChatController {
     private static final Logger log = LoggerFactory.getLogger(NewChatController.class);
 
     @FXML
-    private TextArea myBumpArea;
+    private TextField nameField;
     @FXML
-    private Button copyToClipboardButton;
+    private TextArea sendKeyDisplay;
     @FXML
-    private TextArea bumpInputArea;
+    private Button generateSendKeyButton;
+    @FXML
+    private Button copySendKeyButton;
+    @FXML
+    private TextArea receiveKeyArea;
     @FXML
     private Label statusLabel;
     @FXML
-    private Button acceptButton;
+    private Button createChatButton;
     @FXML
     private Button cancelButton;
 
     private Controller controller;
     private Stage dialogStage;
-    private boolean accepted = false;
+    private String generatedSendKey;
 
     public void setController(Controller controller) {
         this.controller = controller;
@@ -39,53 +44,68 @@ public class NewChatController {
         this.dialogStage = dialogStage;
     }
 
-    public boolean isAccepted() {
-        return accepted;
+    @FXML
+    public void initialize() {
+        // Disable create button if name field is empty
+        createChatButton.disableProperty().bind(nameField.textProperty().isEmpty());
+        statusLabel.setText("Enter a name and generate/paste keys as needed.");
     }
 
-    public void setup() {
-        statusLabel.setText("Your code is being generated...");
+    @FXML
+    private void handleGenerateSendKey() {
         try {
-            String myBump = controller.generateOwnBumpString();
-            myBumpArea.setText(myBump);
-            statusLabel.setText("Copy your code and send it to the other user.");
+            generatedSendKey = controller.generateSendKeyInfo();
+            sendKeyDisplay.setText(generatedSendKey);
+            copySendKeyButton.setDisable(false);
+            statusLabel.setText("Send key generated! Share this with your chat partner.");
+            log.info("Generated send key");
         } catch (Exception ex) {
-            statusLabel.setText("Error generating your code: " + ex.getMessage());
-            log.error("Error generating your code", ex);
+            statusLabel.setText("Error generating send key: " + ex.getMessage());
+            log.error("Error generating send key", ex);
         }
     }
 
     @FXML
-    public void initialize() {
-        acceptButton.disableProperty().bind(bumpInputArea.textProperty().isEmpty());
-    }
-
-    @FXML
-    private void handleCopy() {
+    private void handleCopySendKey() {
         final Clipboard clipboard = Clipboard.getSystemClipboard();
-        final ClipboardContent clipboardContent = new ClipboardContent();
-        clipboardContent.putString(myBumpArea.getText());
-        clipboard.setContent(clipboardContent);
-        statusLabel.setText("Code copied to clipboard!");
+        final ClipboardContent content = new ClipboardContent();
+        content.putString(sendKeyDisplay.getText());
+        clipboard.setContent(content);
+        statusLabel.setText("Send key copied to clipboard!");
     }
 
     @FXML
-    private void handleAccept() {
-        String myCode = myBumpArea.getText().trim();
-        String otherCode = bumpInputArea.getText().trim();
+    private void handleCreateChat() {
+        String name = nameField.getText().trim();
+        String receiveKey = receiveKeyArea.getText().trim();
+        String sendKey = generatedSendKey;
 
-        if (otherCode.isEmpty()) {
-            statusLabel.setText("Please paste the other user's code first.");
+        if (name.isEmpty()) {
+            statusLabel.setText("Please enter a name for this chat.");
             return;
         }
 
-        if (controller.acceptNewChat(myCode, otherCode)) {
+        // At least one key must be present
+        if ((sendKey == null || sendKey.isEmpty()) && receiveKey.isEmpty()) {
+            statusLabel.setText("Generate a send key or paste a receive key (or both).");
+            return;
+        }
+
+        boolean success = controller.createChatWithKeys(name, sendKey, receiveKey);
+
+        if (success) {
             statusLabel.setText("Chat created successfully!");
-            accepted = true;
-            dialogStage.close();
+            // Close dialog after a brief delay
+            javafx.application.Platform.runLater(() -> {
+                try {
+                    Thread.sleep(500);
+                } catch (InterruptedException e) {
+                    // ignore
+                }
+                dialogStage.close();
+            });
         } else {
-            statusLabel.setText("Error accepting: check the codes.");
-            accepted = false;
+            statusLabel.setText("Error creating chat. Check the keys or if chat already exists.");
         }
     }
 

@@ -1,10 +1,9 @@
-- when receiving key from another client but not giving yours to him, we need to be able to have one-way communication
-- make sure the client app doesn't crash when server is offline for a while (buffering and queuing to send messages later?)
 - storing and updating keys in keystore should be correcter / robuster
-- bulletin board index should everywhere be int
+- make sure the client app doesn't crash when server is offline for a while (buffering and queuing to send messages later?)
 - logout is not implemented
-- storing messages -> history management + JSON serialization
+- storing messages
 - make sure before sending to check receiving messages
+- refactor packages
 
 --- Advanced ---
 

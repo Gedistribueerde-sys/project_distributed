@@ -2,17 +2,18 @@ package org.example;
 
 import javax.crypto.SecretKey;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.List;
 
 // This class holds the state of a chat with a specific recipient
 public class ChatState {
     public final String recipient;
 
+    // Sending capability (nullable if receive-only)
     public SecretKey sendKey;
     public long sendIdx;
     public String sendTag;
 
+    // Receiving capability (nullable if send-only)
     public SecretKey recvKey;
     public long recvIdx;
     public String recvTag;
@@ -37,6 +38,14 @@ public class ChatState {
         this.messages = new ArrayList<>();
     }
 
+    public boolean canSend() {
+        return sendKey != null;
+    }
+
+    public boolean canReceive() {
+        return recvKey != null;
+    }
+
     public List<Message> getMessages() {
         return messages;
     }
@@ -51,18 +60,39 @@ public class ChatState {
 
     @Override
     public String toString() {
-        return "Chat with " + recipient;
+        String status = "";
+        if (canSend() && canReceive()) {
+            status = " (⇄)"; // Two-way
+        } else if (canSend()) {
+            status = " (→)"; // Send only
+        } else if (canReceive()) {
+            status = " (←)"; // Receive only
+        }
+        return "Chat with " + recipient + status;
     }
 
     // This is for debug purposes only
     public String debugInfo() {
-        return "OUT (you → " + recipient + ")\n" +
-                " key = " + ChatCrypto.keyToBase64(sendKey) + "\n" +
-                " idx = " + sendIdx + "\n" +
-                " tag = " + sendTag + "\n\n" +
-                "IN (" + recipient + " → you)\n" +
-                " key = " + ChatCrypto.keyToBase64(recvKey) + "\n" +
-                " idx = " + recvIdx + "\n" +
-                " tag = " + recvTag;
+        StringBuilder sb = new StringBuilder();
+
+        if (canSend()) {
+            sb.append("OUT (you → ").append(recipient).append(")\n")
+              .append(" key = ").append(ChatCrypto.keyToBase64(sendKey)).append("\n")
+              .append(" idx = ").append(sendIdx).append("\n")
+              .append(" tag = ").append(sendTag).append("\n\n");
+        } else {
+            sb.append("OUT: Not available (receive-only chat)\n\n");
+        }
+
+        if (canReceive()) {
+            sb.append("IN (").append(recipient).append(" → you)\n")
+              .append(" key = ").append(ChatCrypto.keyToBase64(recvKey)).append("\n")
+              .append(" idx = ").append(recvIdx).append("\n")
+              .append(" tag = ").append(recvTag);
+        } else {
+            sb.append("IN: Not available (send-only chat)");
+        }
+
+        return sb.toString();
     }
 }

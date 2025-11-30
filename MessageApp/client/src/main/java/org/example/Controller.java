@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
 import java.rmi.RemoteException;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -69,70 +70,85 @@ public class Controller {
         loggedIn.set(false);
         loggedOut.set(true);
     }
-    public String generateOwnBumpString() throws Exception {
-        // 1. Generate a new BumpObject
-        BumpObject bump = ChatCrypto.init();
 
-        // 2. Get the SecretKey and encode it to Base64
-        SecretKey initialKey = bump.getKey();
-        String keyString = Base64.getEncoder().encodeToString(initialKey.getEncoded());
+    // Generate a send key encoded as protobuf Base64 string
+    // This key can be given to another user so they can receive messages
+    public String generateSendKeyInfo() throws Exception {
+        ChatProto.KeyInfo keyInfo = ChatCrypto.generateBumpKeyInfo();
 
-        // 3. Create the bump string (tag is already Base64 in BumpObject)
-        return currentUser + "|" + keyString + "|" + bump.getIdx() + "|" + bump.getTag();
+        byte[] serialized = keyInfo.toByteArray();
+        return Base64.getEncoder().encodeToString(serialized);
     }
 
-
-
-    //  Method to accept a new chat based on the received bump string
-    public boolean acceptNewChat(String myBumpString, String otherBumpString) {
+    // Create a new chat with optional send and receive keys
+    public boolean createChatWithKeys(String recipientName, String sendKeyString, String receiveKeyString) {
         try {
-            String[] myParts = myBumpString.split("\\|");
-            String[] otherParts = otherBumpString.split("\\|");
-
-            if (myParts.length != 4 || otherParts.length != 4) {
-                log.error("Invalid bump string format");
+            // Check for duplicate
+            boolean exists = activeChats.stream()
+                    .anyMatch(c -> c.recipient.equals(recipientName));
+            if (exists) {
+                log.error("Chat with {} already exists", recipientName);
                 return false;
             }
 
-            String myName = myParts[0];
-            String otherName = otherParts[0];
-
-            // Check if myName matches the logged-in user
-            if (!myName.equals(currentUser)) {
-                log.error("Bump string name {} does not match logged-in user {}", myName, currentUser);
-            }
-
-            // No duplicate chats allowed
-            boolean alreadyExists = activeChats.stream()
-                    .anyMatch(c -> c.recipient.equals(otherName));
-            if (alreadyExists) {
-                log.error("Chat with {} already exists", otherName);
+            // At least one key must be present
+            if ((sendKeyString == null || sendKeyString.isEmpty()) &&
+                (receiveKeyString == null || receiveKeyString.isEmpty())) {
+                log.error("At least one key (send or receive) must be provided");
                 return false;
             }
 
-            SecretKey myKey = ChatCrypto.decodeKey(myParts[1]);
-            long myIdx = Long.parseLong(myParts[2]);
-            String myTag = myParts[3];
+            SecretKey sendSecretKey = null;
+            long sendIdx = 0;
+            String sendTag = null;
 
-            SecretKey otherKey = ChatCrypto.decodeKey(otherParts[1]);
-            long otherIdx = Long.parseLong(otherParts[2]);
-            String otherTag = otherParts[3];
+            SecretKey recvSecretKey = null;
+            long recvIdx = 0;
+            String recvTag = null;
+
+            // Parse send key if present
+            if (sendKeyString != null && !sendKeyString.trim().isEmpty()) {
+                byte[] decoded = Base64.getDecoder().decode(sendKeyString.trim());
+                ChatProto.KeyInfo keyInfo = ChatProto.KeyInfo.parseFrom(decoded);
+
+                byte[] keyBytes = keyInfo.getKey().toByteArray();
+                sendSecretKey = new SecretKeySpec(keyBytes, 0, keyBytes.length, "AES");
+                sendIdx = keyInfo.getIdx();
+                sendTag = Base64.getEncoder().encodeToString(keyInfo.getTag().toByteArray());
+
+                log.info("Parsed send key: idx={}, tag={}", sendIdx, sendTag);
+            }
+
+            // Parse receive key if present
+            if (receiveKeyString != null && !receiveKeyString.trim().isEmpty()) {
+                byte[] decoded = Base64.getDecoder().decode(receiveKeyString.trim());
+                ChatProto.KeyInfo keyInfo = ChatProto.KeyInfo.parseFrom(decoded);
+
+                byte[] keyBytes = keyInfo.getKey().toByteArray();
+                recvSecretKey = new SecretKeySpec(keyBytes, 0, keyBytes.length, "AES");
+                recvIdx = keyInfo.getIdx();
+                recvTag = Base64.getEncoder().encodeToString(keyInfo.getTag().toByteArray());
+
+                log.info("Parsed receive key: idx={}, tag={}", recvIdx, recvTag);
+            }
 
             ChatState chat = new ChatState(
-                    otherName,
-                    myKey, myIdx, myTag,
-                    otherKey, otherIdx, otherTag
+                    recipientName,
+                    sendSecretKey, sendIdx, sendTag,
+                    recvSecretKey, recvIdx, recvTag
             );
 
             activeChats.add(chat);
+            log.info("Created chat with {}: canSend={}, canReceive={}",
+                    recipientName, chat.canSend(), chat.canReceive());
             return true;
 
         } catch (Exception e) {
-            log.error("Exception while accepting new chat", e);
-
+            log.error("Error creating chat with keys", e);
             return false;
         }
     }
+
     public String getDebugStateForIndex(int listIndex) {
         // listIndex = index in the ListView
         // 0 = "➕ New Chat (BUMP)"
@@ -140,8 +156,6 @@ public class Controller {
         if (idx < 0 || idx >= activeChats.size()) return "";
         return activeChats.get(idx).debugInfo();
     }
-
-
 
     //  Retrieves the names of the chats for the GUI
     public List<String> getChatNames() {
@@ -151,11 +165,6 @@ public class Controller {
         return names;
     }
 
-    /**
-     *
-     * @param chatIndex : index in the list (0 = new chat, 1 = first chat, etc)
-     * @param message : the message to send
-     */
     public void sendMessage(int chatIndex, String message) {
         // 0 = "➕ New Chat (BUMP)", real chats start at 1
         chatIndex -= 1;
@@ -165,6 +174,11 @@ public class Controller {
         }
 
         ChatState chat = activeChats.get(chatIndex);
+
+        if (!chat.canSend()) {
+            log.error("Cannot send - this is a receive-only chat with {}", chat.recipient);
+            return;
+        }
 
         try {
             // 1. Generate new idx' and tag'
@@ -214,6 +228,11 @@ public class Controller {
 
         ChatState chat = activeChats.get(idx);
 
+        if (!chat.canReceive()) {
+            log.error("Cannot receive - this is a send-only chat with {}", chat.recipient);
+            return false;
+        }
+
         while (true) {
             log.info("FETCH: recvIdx={}, recvTag(base64)={}", chat.recvIdx, chat.recvTag);
 
@@ -250,11 +269,7 @@ public class Controller {
 
         return true;
     }
-    public String getRecipientName(int listIndex) {
-        int idx = listIndex - 1;
-        if (idx < 0 || idx >= activeChats.size()) return "?";
-        return activeChats.get(idx).recipient;
-    }
+
     public List<Message> getMessagesForChat(int listIndex) {
         int idx = listIndex - 1;
         if (idx < 0 || idx >= activeChats.size()) {
@@ -263,5 +278,16 @@ public class Controller {
         return activeChats.get(idx).getMessages();
     }
 
+    public boolean canSendToChat(int listIndex) {
+        int idx = listIndex - 1;
+        if (idx < 0 || idx >= activeChats.size()) return false;
+        return activeChats.get(idx).canSend();
+    }
+
+    public boolean canReceiveFromChat(int listIndex) {
+        int idx = listIndex - 1;
+        if (idx < 0 || idx >= activeChats.size()) return false;
+        return activeChats.get(idx).canReceive();
+    }
 
 }

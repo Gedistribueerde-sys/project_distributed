@@ -1,5 +1,7 @@
 package org.example;
 
+import com.google.protobuf.ByteString;
+import org.example.proto.ChatProto;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,33 +15,26 @@ public class ChatCrypto {
     private static final Logger log = LoggerFactory.getLogger(ChatCrypto.class);
     static final private SecureRandom secureRandom = new SecureRandom();
 
-    public static BumpObject init() throws Exception {
+    public static ChatProto.KeyInfo generateBumpKeyInfo() throws Exception {
+        long initialIdx = makeNewIdx();
+        log.info("Generated Chat ID: {}", initialIdx);
 
-        // generates a random long for the chat idx
-        long randomNum = secureRandom.nextLong();
+        byte[] tagBytes = makeNewTag();
 
-        long idx = randomNum & Long.MAX_VALUE;
-        log.info("Generated Chat ID: {}", idx);
+        SecretKey secretKey = generateChatKey();
 
-        // generate tag: 32 bytes = 256 bits
-        byte[] tagBytes = new byte[32];
-        secureRandom.nextBytes(tagBytes);
-        // encode to Base64 string
-        String initialTag = Base64.getEncoder().encodeToString(tagBytes);
+        return ChatProto.KeyInfo.newBuilder()
+                .setIdx(initialIdx)
+                .setTag(ByteString.copyFrom(tagBytes))
+                .setKey(ByteString.copyFrom(secretKey.getEncoded()))
+                .build();
+    }
 
+    public static SecretKey generateChatKey() throws NoSuchAlgorithmException {
         // generate AES-256 key
         KeyGenerator keyGen = KeyGenerator.getInstance("AES");
         keyGen.init(256, secureRandom);
-        SecretKey secretKey = keyGen.generateKey();
-
-        return new BumpObject( idx, initialTag,secretKey);
-    }
-
-
-    // Decode a Base64-encoded string back into a SecretKey
-    public static SecretKey decodeKey(String keyString) {
-        byte[] decodedKey = Base64.getDecoder().decode(keyString);
-        return new SecretKeySpec(decodedKey, 0, decodedKey.length, "AES");
+        return keyGen.generateKey();
     }
 
     public static String keyToBase64(SecretKey key) {
@@ -112,3 +107,4 @@ public class ChatCrypto {
 
     }
 }
+

@@ -4,7 +4,6 @@ import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.stage.Stage;
-import javafx.geometry.Insets;
 import javafx.scene.layout.VBox;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
@@ -30,6 +29,10 @@ public class ChatController {
     private ListView<Message> messagesView;
     @FXML
     private TextField messageField;
+    @FXML
+    private Button sendButton;
+    @FXML
+    private Button fetchButton;
 
     private Controller controller;
     private Stage stage;
@@ -56,13 +59,33 @@ public class ChatController {
             if (newVal.startsWith("➕")) {
                 stateView.clear();
                 messagesView.getItems().add(new Message("system", "Use the dialog to start a chat..."));
+                // Hide buttons for new chat
+                sendButton.setVisible(false);
+                sendButton.setManaged(false);
+                fetchButton.setVisible(false);
+                fetchButton.setManaged(false);
+                messageField.setVisible(false);
+                messageField.setManaged(false);
+
                 Platform.runLater(() -> {
                     showNewChatDialog();
                     // chatList is updated in showNewChatDialog if successful
                     chatList.getSelectionModel().clearSelection();
                 });
             } else {
-                // A chat is selected, refresh the message view and state
+                // A chat is selected, update button visibility based on capabilities
+                boolean canSend = controller.canSendToChat(selectedIndex);
+                boolean canReceive = controller.canReceiveFromChat(selectedIndex);
+
+                sendButton.setVisible(canSend);
+                sendButton.setManaged(canSend);
+                messageField.setVisible(canSend);
+                messageField.setManaged(canSend);
+
+                fetchButton.setVisible(canReceive);
+                fetchButton.setManaged(canReceive);
+
+                // Refresh the message view and state
                 refreshMessagesView(selectedIndex);
                 String debugText = controller.getDebugStateForIndex(selectedIndex);
                 stateView.setText(debugText);
@@ -147,7 +170,7 @@ public class ChatController {
             VBox page = loader.load();
 
             Stage dialogStage = new Stage();
-            dialogStage.setTitle("New Chat (Bump Simulation)");
+            dialogStage.setTitle("Create New Chat");
             dialogStage.initModality(Modality.WINDOW_MODAL);
             dialogStage.initOwner(stage);
             Scene scene = new Scene(page);
@@ -156,13 +179,11 @@ public class ChatController {
             NewChatController newChatController = loader.getController();
             newChatController.setController(controller);
             newChatController.setDialogStage(dialogStage);
-            newChatController.setup();
 
             dialogStage.showAndWait();
 
-            if (newChatController.isAccepted()) {
-                updateChatList();
-            }
+            // Always update chat list after dialog closes (in case chat was created)
+            updateChatList();
 
         } catch (IOException e) {
             log.error("Failed to load new chat dialog", e);
