@@ -20,6 +20,7 @@ public class Controller {
     private final KeyStoreImpl keyStore = new KeyStoreImpl();
     private String currentUser;
     private final BulletinBoard bulletinBoard;
+    private DatabaseManager databaseManager;
 
     private final BooleanProperty loggedIn = new SimpleBooleanProperty(false);
     private final BooleanProperty loggedOut = new SimpleBooleanProperty(false);
@@ -35,10 +36,16 @@ public class Controller {
     }
 
     public boolean register(String username, String password) {
-
         boolean created = keyStore.makeKeyStore(username, password);
         if (created) {
             log.info("Keystore created for user: {}", username);
+
+            // Initialize empty database for new user
+            SecretKey dbKey = keyStore.getDatabaseKey();
+            if (dbKey != null) {
+                databaseManager = new DatabaseManager(username, dbKey);
+                log.info("Database initialized for new user: {}", username);
+            }
         } else {
             log.info("Failed to create keystore for user: {}", username);
         }
@@ -49,7 +56,21 @@ public class Controller {
         boolean loaded = keyStore.loadKeyStore(username, password);
         if (loaded) {
             currentUser = username;
-            log.info("User {} logged in successfully.", username);
+
+            // Get database encryption key from keystore
+            SecretKey dbKey = keyStore.getDatabaseKey();
+            if (dbKey == null) {
+                log.error("Failed to retrieve database key for user {}", username);
+                return false;
+            }
+
+            // Initialize database manager
+            databaseManager = new DatabaseManager(username, dbKey);
+
+            // Restore chat states from database
+            restoreChatStates();
+
+            log.info("User {} logged in successfully with {} chat(s) restored.", username, activeChats.size());
             loggedIn.set(true);
             loggedOut.set(false);
         } else {
@@ -67,8 +88,47 @@ public class Controller {
         log.info("User {} logged out.", currentUser);
         currentUser = null;
         activeChats.clear();
+        databaseManager = null;
         loggedIn.set(false);
         loggedOut.set(true);
+    }
+
+    /**
+     * Restores chat states from database after login.
+     */
+    private void restoreChatStates() {
+        if (databaseManager == null) {
+            log.error("Database manager not initialized");
+            return;
+        }
+
+        try {
+            List<DatabaseManager.PersistedChatState> persistedStates = databaseManager.loadAllChatStates();
+
+            // For each persisted chat state, recreate ChatState and load messages
+            for (DatabaseManager.PersistedChatState state : persistedStates) {
+                SecretKey sendKey = state.sendKey() == null ? null : new SecretKeySpec(state.sendKey(), "AES");
+                SecretKey recvKey = state.recvKey() == null ? null : new SecretKeySpec(state.recvKey(), "AES");
+
+                ChatState chat = new ChatState(
+                        state.recipient(),
+                    sendKey, state.sendNextIdx(), state.sendTag(),
+                    recvKey, state.recvNextIdx(), state.recvTag()
+                );
+
+                // Load messages for this chat
+                List<Message> messages = databaseManager.loadMessages(state.recipient());
+                for (Message msg : messages) {
+                    chat.getMessages().add(msg);
+                }
+
+                activeChats.add(chat);
+                log.info("Restored chat with {}: {} message(s), sendTag={}, recvTag={}",
+                        state.recipient(), messages.size(), state.sendTag(), state.recvTag());
+            }
+        } catch (Exception e) {
+            log.error("Failed to restore chat states", e);
+        }
     }
 
     // Generate a send key encoded as protobuf Base64 string
@@ -139,6 +199,15 @@ public class Controller {
             );
 
             activeChats.add(chat);
+
+            // Persist to database
+            if (databaseManager != null) {
+                byte[] sendKeyBytes = sendSecretKey == null ? null : sendSecretKey.getEncoded();
+                byte[] recvKeyBytes = recvSecretKey == null ? null : recvSecretKey.getEncoded();
+                databaseManager.upsertChatState(recipientName, sendKeyBytes, recvKeyBytes, sendIdx, recvIdx,
+                    sendTag, recvTag);
+            }
+
             log.info("Created chat with {}: canSend={}, canReceive={}",
                     recipientName, chat.canSend(), chat.canReceive());
             return true;
@@ -214,6 +283,15 @@ public class Controller {
             chat.sendKey = ChatCrypto.makeNewSecretKey(chat.sendKey);
 
             chat.addSentMessage(message, currentUser);
+
+            // 7. Persist message and updated state to database
+            if (databaseManager != null) {
+                databaseManager.addMessage(chat.recipient, message, true);
+                byte[] sendKeyBytes = chat.sendKey.getEncoded();
+                byte[] recvKeyBytes = chat.recvKey == null ? null : chat.recvKey.getEncoded();
+                databaseManager.upsertChatState(chat.recipient, sendKeyBytes, recvKeyBytes,
+                    chat.sendIdx, chat.recvIdx, chat.sendTag, chat.recvTag);
+            }
         } catch (Exception e) {
             log.error("Exception while sending message", e);
         }
@@ -260,6 +338,15 @@ public class Controller {
                 chat.recvIdx = nextIdx;
                 chat.recvTag = nextTag;
                 chat.recvKey = ChatCrypto.makeNewSecretKey(chat.recvKey);
+
+                // Persist received message and updated state to database
+                if (databaseManager != null) {
+                    databaseManager.addMessage(chat.recipient, receivedMessage, false);
+                    byte[] sendKeyBytes = chat.sendKey == null ? null : chat.sendKey.getEncoded();
+                    byte[] recvKeyBytes = chat.recvKey.getEncoded();
+                    databaseManager.upsertChatState(chat.recipient, sendKeyBytes, recvKeyBytes,
+                        chat.sendIdx, chat.recvIdx, chat.sendTag, chat.recvTag);
+                }
 
             } catch (Exception e) {
                 log.error("Exception while decrypting message", e);
