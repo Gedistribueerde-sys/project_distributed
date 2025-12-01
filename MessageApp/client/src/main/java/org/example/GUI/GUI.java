@@ -1,10 +1,14 @@
-package org.example;
+package org.example.GUI;
 
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
+import org.example.Client;
+import org.example.controller.LoginController;
+import org.example.controller.ChatController;
+import org.example.controller.ChatCore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,12 +17,12 @@ import java.io.IOException;
 public class GUI extends Application {
     private static final Logger log = LoggerFactory.getLogger(GUI.class);
 
-    private Controller controller;
+    private ChatCore chatCore;
     private Stage stage;
 
     @Override
     public void start(Stage stage) {
-        this.controller = Client.controller;
+        this.chatCore = Client.chatCore;
         this.stage = stage;
 
         stage.setTitle("Message App");
@@ -32,11 +36,11 @@ public class GUI extends Application {
             Parent root = loader.load();
 
             LoginController loginController = loader.getController();
-            loginController.setController(controller);
+            loginController.setController(chatCore);
             loginController.setStage(stage);
 
             // Add a listener to the controller's login status
-            controller.loggedInProperty().addListener((obs, oldVal, newVal) -> {
+            chatCore.loggedInProperty().addListener((obs, oldVal, newVal) -> {
                 if (newVal) {
                     showChatScene();
                 }
@@ -55,12 +59,12 @@ public class GUI extends Application {
             Parent root = loader.load();
 
             ChatController chatController = loader.getController();
-            chatController.setController(controller);
+            chatController.setController(chatCore);
             chatController.setStage(stage);
             chatController.setup();
 
             // Add a listener to the controller's logout status
-            controller.loggedOutProperty().addListener((obs, oldVal, newVal) -> {
+            chatCore.loggedOutProperty().addListener((obs, oldVal, newVal) -> {
                 if (newVal) {
                     showLoginScene();
                 }

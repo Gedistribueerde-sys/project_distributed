@@ -1,4 +1,4 @@
-package org.example;
+package org.example.GUI;
 
 /**
  * Simple message model used by the UI.

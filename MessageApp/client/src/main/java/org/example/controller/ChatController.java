@@ -1,4 +1,4 @@
-package org.example;
+package org.example.controller;
 
 import javafx.application.Platform;
 import javafx.fxml.FXML;
@@ -8,6 +8,8 @@ import javafx.scene.layout.VBox;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.stage.Modality;
+import org.example.GUI.Message;
+import org.example.GUI.MessageCell;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,11 +36,11 @@ public class ChatController {
     @FXML
     private Button fetchButton;
 
-    private Controller controller;
+    private ChatCore chatCore;
     private Stage stage;
 
-    public void setController(Controller controller) {
-        this.controller = controller;
+    public void setController(ChatCore chatCore) {
+        this.chatCore = chatCore;
     }
 
     public void setStage(Stage stage) {
@@ -74,8 +76,8 @@ public class ChatController {
                 });
             } else {
                 // A chat is selected, update button visibility based on capabilities
-                boolean canSend = controller.canSendToChat(selectedIndex);
-                boolean canReceive = controller.canReceiveFromChat(selectedIndex);
+                boolean canSend = chatCore.canSendToChat(selectedIndex);
+                boolean canReceive = chatCore.canReceiveFromChat(selectedIndex);
 
                 sendButton.setVisible(canSend);
                 sendButton.setManaged(canSend);
@@ -87,22 +89,22 @@ public class ChatController {
 
                 // Refresh the message view and state
                 refreshMessagesView(selectedIndex);
-                String debugText = controller.getDebugStateForIndex(selectedIndex);
+                String debugText = chatCore.getDebugStateForIndex(selectedIndex);
                 stateView.setText(debugText);
             }
         });
     }
 
     public void setup() {
-        userLabel.setText("Logged in as: " + controller.getCurrentUser());
+        userLabel.setText("Logged in as: " + chatCore.getCurrentUser());
         // set the custom cell factory now that controller/current user is available
-        messagesView.setCellFactory(lv -> new MessageCell(controller.getCurrentUser()));
+        messagesView.setCellFactory(lv -> new MessageCell(chatCore.getCurrentUser()));
         updateChatList();
     }
 
     @FXML
     private void handleLogout() {
-        controller.logout();
+        chatCore.logout();
         // The GUI class will handle the scene change
     }
 
@@ -117,10 +119,10 @@ public class ChatController {
             return;
         }
 
-        controller.sendMessage(selectedIndex, text);
+        chatCore.sendMessage(selectedIndex, text);
         refreshMessagesView(selectedIndex);
         messageField.clear();
-        String debugText = controller.getDebugStateForIndex(selectedIndex);
+        String debugText = chatCore.getDebugStateForIndex(selectedIndex);
         stateView.setText(debugText);
     }
 
@@ -134,14 +136,14 @@ public class ChatController {
 
         try {
             log.info("GUI: fetchMessages for index {}", selectedIndex);
-            boolean newMessages = controller.fetchMessages(selectedIndex);
+            boolean newMessages = chatCore.fetchMessages(selectedIndex);
 
             if (!newMessages) {
                 messagesView.getItems().add(new Message("system", "No new messages."));
             } else {
                 refreshMessagesView(selectedIndex);
             }
-            String debugText = controller.getDebugStateForIndex(selectedIndex);
+            String debugText = chatCore.getDebugStateForIndex(selectedIndex);
             stateView.setText(debugText);
         } catch (RemoteException ex) {
             log.error("Error fetching messages", ex);
@@ -154,19 +156,19 @@ public class ChatController {
             messagesView.getItems().clear();
             return;
         }
-        List<Message> messages = controller.getMessagesForChat(selectedIndex);
+        List<Message> messages = chatCore.getMessagesForChat(selectedIndex);
         messagesView.getItems().setAll(messages);
     }
 
     private void updateChatList() {
         if (chatList != null) {
-            chatList.getItems().setAll(controller.getChatNames());
+            chatList.getItems().setAll(chatCore.getChatNames());
         }
     }
 
     private void showNewChatDialog() {
         try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("NewChatView.fxml"));
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/org/example/NewChatView.fxml"));
             VBox page = loader.load();
 
             Stage dialogStage = new Stage();
@@ -177,7 +179,7 @@ public class ChatController {
             dialogStage.setScene(scene);
 
             NewChatController newChatController = loader.getController();
-            newChatController.setController(controller);
+            newChatController.setController(chatCore);
             newChatController.setDialogStage(dialogStage);
 
             dialogStage.showAndWait();

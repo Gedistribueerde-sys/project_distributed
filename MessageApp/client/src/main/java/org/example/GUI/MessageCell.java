@@ -1,5 +1,5 @@
 // MessageCell.java
-package org.example;
+package org.example.GUI;
 
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;

@@ -1,8 +1,12 @@
-package org.example;
+package org.example.controller;
 
 import com.google.protobuf.ByteString;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.SimpleBooleanProperty;
+import org.example.*;
+import org.example.GUI.Message;
+import org.example.cypto.ChatCrypto;
+import org.example.cypto.KeyStoreImpl;
 import org.example.proto.ChatProto;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,8 +18,8 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 
-public class Controller {
-    private static final Logger log = LoggerFactory.getLogger(Controller.class);
+public class ChatCore {
+    private static final Logger log = LoggerFactory.getLogger(ChatCore.class);
     private final List<ChatState> activeChats = new ArrayList<>();
     private final KeyStoreImpl keyStore = new KeyStoreImpl();
     private String currentUser;
@@ -25,7 +29,7 @@ public class Controller {
     private final BooleanProperty loggedIn = new SimpleBooleanProperty(false);
     private final BooleanProperty loggedOut = new SimpleBooleanProperty(false);
 
-    public Controller(BulletinBoard bulletinBoard) {this.bulletinBoard = bulletinBoard;}
+    public ChatCore(BulletinBoard bulletinBoard) {this.bulletinBoard = bulletinBoard;}
 
     public BooleanProperty loggedInProperty() {
         return loggedIn;

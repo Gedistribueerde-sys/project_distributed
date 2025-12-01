@@ -1,5 +1,8 @@
 package org.example;
 
+import org.example.GUI.Message;
+import org.example.cypto.ChatCrypto;
+
 import javax.crypto.SecretKey;
 import java.util.ArrayList;
 import java.util.List;

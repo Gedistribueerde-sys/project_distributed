@@ -1,4 +1,4 @@
-package org.example;
+package org.example.controller;
 
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
@@ -32,12 +32,12 @@ public class NewChatController {
     @FXML
     private Button cancelButton;
 
-    private Controller controller;
+    private ChatCore chatCore;
     private Stage dialogStage;
     private String generatedSendKey;
 
-    public void setController(Controller controller) {
-        this.controller = controller;
+    public void setController(ChatCore chatCore) {
+        this.chatCore = chatCore;
     }
 
     public void setDialogStage(Stage dialogStage) {
@@ -54,7 +54,7 @@ public class NewChatController {
     @FXML
     private void handleGenerateSendKey() {
         try {
-            generatedSendKey = controller.generateSendKeyInfo();
+            generatedSendKey = chatCore.generateSendKeyInfo();
             sendKeyDisplay.setText(generatedSendKey);
             copySendKeyButton.setDisable(false);
             statusLabel.setText("Send key generated! Share this with your chat partner.");
@@ -91,7 +91,7 @@ public class NewChatController {
             return;
         }
 
-        boolean success = controller.createChatWithKeys(name, sendKey, receiveKey);
+        boolean success = chatCore.createChatWithKeys(name, sendKey, receiveKey);
 
         if (success) {
             statusLabel.setText("Chat created successfully!");

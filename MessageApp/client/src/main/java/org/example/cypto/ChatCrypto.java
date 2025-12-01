@@ -1,4 +1,4 @@
-package org.example;
+package org.example.cypto;
 
 import com.google.protobuf.ByteString;
 import org.example.proto.ChatProto;

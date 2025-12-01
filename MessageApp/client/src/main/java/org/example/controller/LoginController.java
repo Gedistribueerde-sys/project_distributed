@@ -1,4 +1,4 @@
-package org.example;
+package org.example.controller;
 
 import javafx.fxml.FXML;
 import javafx.scene.control.Label;
@@ -17,11 +17,11 @@ public class LoginController {
     @FXML
     private Label statusLabel;
 
-    private Controller controller;
+    private ChatCore chatCore;
     private Stage stage;
 
-    public void setController(Controller controller) {
-        this.controller = controller;
+    public void setController(ChatCore chatCore) {
+        this.chatCore = chatCore;
     }
 
     public void setStage(Stage stage) {
@@ -32,7 +32,7 @@ public class LoginController {
     private void handleLogin() {
         String user = usernameField.getText();
         String pass = passwordField.getText();
-        if (controller.login(user, pass)) {
+        if (chatCore.login(user, pass)) {
             statusLabel.setText("Login successful!");
             // The GUI class will handle the scene change
         } else {
@@ -44,7 +44,7 @@ public class LoginController {
     private void handleRegister() {
         String user = usernameField.getText();
         String pass = passwordField.getText();
-        if (controller.register(user, pass)) {
+        if (chatCore.register(user, pass)) {
             statusLabel.setText("Registration successful, please log in now");
         } else {
             statusLabel.setText("Registration failed (name already exists or is invalid)");
