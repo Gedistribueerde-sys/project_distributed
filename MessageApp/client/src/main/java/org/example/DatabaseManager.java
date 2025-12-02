@@ -79,8 +79,16 @@ public class DatabaseManager {
                 // Copy current_tag to both if it exists
                 stmt.execute("UPDATE chat_sessions SET send_tag = current_tag, recv_tag = current_tag WHERE send_tag IS NULL");
                 log.info("Migrated database schema to separate send_tag and recv_tag");
+
             } catch (SQLException e) {
                 // Columns already exist, ignore
+            }
+            try {
+                // Dit zorgt ervoor dat de kolom wordt toegevoegd als deze nog niet bestaat
+                stmt.execute("ALTER TABLE messages ADD COLUMN is_server_sent INTEGER DEFAULT 0");
+                log.info("Migrated messages schema: added is_server_sent column.");
+            } catch (SQLException e) {
+                // Kolom bestaat al, negeer
             }
 
         } catch (SQLException e) {
@@ -212,8 +220,8 @@ public class DatabaseManager {
      * @param messageText Message content
      * @param isSent True if sent by current user, false if received
      */
-    public void addMessage(String recipient, String messageText, boolean isSent) {
-        String sql = "INSERT INTO messages(recipient_id, timestamp, is_sent, content) VALUES(?,?,?,?)";
+    public void addMessage(String recipient, String messageText, boolean isSent,boolean isServerSent) {
+        String sql = "INSERT INTO messages(recipient_id, timestamp, is_sent, is_server_sent, content) VALUES(?,?,?,?,?)";
         byte[] aad = CryptoUtils.makeAAD(username, recipient);
 
         try (Connection conn = DriverManager.getConnection(url);
@@ -222,7 +230,8 @@ public class DatabaseManager {
             ps.setString(1, recipient);
             ps.setLong(2, System.currentTimeMillis());
             ps.setInt(3, isSent ? 1 : 0);
-            ps.setBytes(4, CryptoUtils.encrypt(messageText.getBytes(StandardCharsets.UTF_8), dbKey, aad));
+            ps.setInt(4, isServerSent ? 1 : 0);
+            ps.setBytes(5, CryptoUtils.encrypt(messageText.getBytes(StandardCharsets.UTF_8), dbKey, aad));
             ps.executeUpdate();
 
             log.debug("Saved message for recipient: {}", recipient);
@@ -276,8 +285,74 @@ public class DatabaseManager {
      * @param sendKey raw AES key bytes (or null)
      * @param recvKey raw AES key bytes (or null)
      */
-        public record PersistedChatState(String recipient, byte[] sendKey, byte[] recvKey, long sendNextIdx,
-                                         long recvNextIdx, String sendTag, String recvTag) {
+    public record PersistedChatState(String recipient, byte[] sendKey, byte[] recvKey, long sendNextIdx,
+                                     long recvNextIdx, String sendTag, String recvTag) {
     }
+
+    /**
+     * DTO for messages waiting to be sent to the BulletinBoard.
+     *
+     * @param id The primary key of the message in the database
+     * @param recipient The intended recipient
+     * @param messageText The decrypted message content
+     */
+    public record PendingMessage(long id, String recipient, String messageText) {}
+
+
+
+    /**
+     * Marks a message as successfully sent to the BulletinBoard (sets is_server_sent=1).
+     * @param messageId The ID of the message to update.
+     */
+    public void markMessageAsSent(long messageId) {
+        String sql = "UPDATE messages SET is_server_sent = 1 WHERE id = ?";
+
+        try (Connection conn = DriverManager.getConnection(url);
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setLong(1, messageId);
+            ps.executeUpdate();
+            log.debug("Message ID {} marked as delivered to server.", messageId);
+
+        } catch (SQLException e) {
+            log.error("Failed to mark message as delivered: {}", messageId, e);
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * Retrieves all messages that were sent by the user but have not yet
+     * been successfully sent to the BulletinBoard (Outbox).
+     * @return List of pending messages.
+     */
+    public List<PendingMessage> getPendingOutboxMessages() {
+        // Load messages where is_sent=1 and is_server_sent=0
+        // if the issent = 0 it means its a received message
+        String sql = "SELECT id, recipient_id, content FROM messages WHERE is_sent = 1 AND is_server_sent = 0 ORDER BY timestamp ASC";
+        List<PendingMessage> pending = new ArrayList<>();
+
+        try (Connection conn = DriverManager.getConnection(url);
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+                long id = rs.getLong("id");
+                String recipient = rs.getString("recipient_id");
+                byte[] encContent = rs.getBytes("content");
+
+                byte[] aad = CryptoUtils.makeAAD(username, recipient);
+                byte[] decContent = CryptoUtils.decrypt(encContent, dbKey, aad);
+                String content = new String(decContent, StandardCharsets.UTF_8);
+
+                pending.add(new PendingMessage(id, recipient, content));
+            }
+            log.debug("Found {} pending message(s) in outbox.", pending.size());
+        } catch (Exception e) {
+            log.error("Failed to load pending outbox messages", e);
+            throw new RuntimeException(e);
+        }
+        return pending;
+    }
+
 }
 

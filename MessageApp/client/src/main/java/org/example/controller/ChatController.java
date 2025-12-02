@@ -15,7 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.rmi.RemoteException;
+// java.rmi.RemoteException is nu niet meer nodig
 import java.util.List;
 
 public class ChatController {
@@ -34,6 +34,7 @@ public class ChatController {
     private TextField messageField;
     @FXML
     private Button sendButton;
+
 
 
     private ChatCore chatCore;
@@ -81,8 +82,6 @@ public class ChatController {
             } else {
                 // A chat is selected, update button visibility based on capabilities
                 boolean canSend = chatCore.canSendToChat(selectedIndex);
-                boolean canReceive = chatCore.canReceiveFromChat(selectedIndex);
-
                 sendButton.setVisible(canSend);
                 sendButton.setManaged(canSend);
                 messageField.setVisible(canSend);
@@ -102,23 +101,17 @@ public class ChatController {
         // set the custom cell factory now that controller/current user is available
         messagesView.setCellFactory(lv -> new MessageCell(chatCore.getCurrentUser()));
         updateChatList();
+        // register the UI callback in the chatcore/processor
 
-        // 1. Define what happens when the background thread finds a message
-        chatCore.setOnMessageUpdate(() -> {
-            Platform.runLater(() -> {
-                // Refresh the view if a chat is currently selected
-                int selectedIndex = chatList.getSelectionModel().getSelectedIndex();
-                if (selectedIndex > 0) {
-                    refreshMessagesView(selectedIndex);
-                    String debugText = chatCore.getDebugStateForIndex(selectedIndex);
-                    stateView.setText(debugText);
-                }
-                // Optional: Play a sound or show a notification icon here
-            });
+        chatCore.setOnMessageUpdateCallback(() -> { // method call to chatcore
+            // refresh the view once a chat is selected
+            int selectedIndex = chatList.getSelectionModel().getSelectedIndex();
+            if (selectedIndex > 0) {
+                refreshMessagesView(selectedIndex);
+                String debugText = chatCore.getDebugStateForIndex(selectedIndex);
+                stateView.setText(debugText);
+            }
         });
-
-        // 2. Start the auto-fetcher
-        chatCore.startAutoFetch();
     }
 
     @FXML
@@ -145,30 +138,6 @@ public class ChatController {
         stateView.setText(debugText);
     }
 
-    @FXML
-    private void handleFetch() {
-        int selectedIndex = chatList.getSelectionModel().getSelectedIndex();
-        if (selectedIndex <= 0) {
-            new Alert(Alert.AlertType.WARNING, "Please select an existing chat first.").showAndWait();
-            return;
-        }
-
-        try {
-            log.info("GUI: fetchMessages for index {}", selectedIndex);
-            boolean newMessages = chatCore.fetchMessages(selectedIndex);
-
-            if (!newMessages) {
-                messagesView.getItems().add(new Message("system", "No new messages."));
-            } else {
-                refreshMessagesView(selectedIndex);
-            }
-            String debugText = chatCore.getDebugStateForIndex(selectedIndex);
-            stateView.setText(debugText);
-        } catch (RemoteException ex) {
-            log.error("Error fetching messages", ex);
-            new Alert(Alert.AlertType.ERROR, "Error fetching messages.").showAndWait();
-        }
-    }
 
     @FXML
     private void handleThemeToggle() {
@@ -182,6 +151,7 @@ public class ChatController {
         }
         List<Message> messages = chatCore.getMessagesForChat(selectedIndex);
         messagesView.getItems().setAll(messages);
+        messagesView.scrollTo(messages.size() - 1); // Scroll naar het nieuwste bericht
     }
 
     private void updateChatList() {

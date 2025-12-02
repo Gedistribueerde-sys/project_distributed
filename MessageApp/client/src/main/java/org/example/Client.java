@@ -14,12 +14,9 @@ public class Client {
 
     static void main(String[] args) throws RemoteException, NotBoundException {
 
+        // dont initiate the connection here, this has been handeled in the inandoutbox
 
-        Registry locateRegistry = LocateRegistry.getRegistry();
-        BulletinBoard bulletinBoard = (BulletinBoard) locateRegistry.lookup("BulletinBoard");
-        System.out.println("Connected to BulletinBoard RMI server.");
-
-        chatCore = new ChatCore(bulletinBoard);
+        chatCore = new ChatCore();
 
 
         Application.launch(GUI.class, args);

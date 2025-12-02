@@ -1,6 +1,6 @@
 package org.example.controller;
 
-import com.google.protobuf.ByteString;
+import javafx.application.Platform;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.SimpleBooleanProperty;
 import org.example.*;
@@ -13,10 +13,10 @@ import org.slf4j.LoggerFactory;
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
-import java.rmi.RemoteException;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.Optional;
 
 public class ChatCore {
     private static final Logger log = LoggerFactory.getLogger(ChatCore.class);
@@ -24,17 +24,18 @@ public class ChatCore {
     private final KeyStoreImpl keyStore = new KeyStoreImpl();
     private String currentUser;
 
-    private volatile boolean isFetching = false;
-    private Thread autoFetchThread;
-    private Runnable onMessageUpdate;
 
-    private final BulletinBoard bulletinBoard;
+    private Runnable onMessageUpdateCallback;
+
+
+
     private DatabaseManager databaseManager;
 
     private final BooleanProperty loggedIn = new SimpleBooleanProperty(false);
     private final BooleanProperty loggedOut = new SimpleBooleanProperty(false);
+    private InAndOutBox inAndOutBox;
 
-    public ChatCore(BulletinBoard bulletinBoard) {this.bulletinBoard = bulletinBoard;}
+    public ChatCore() {}
 
     public BooleanProperty loggedInProperty() {
         return loggedIn;
@@ -78,7 +79,9 @@ public class ChatCore {
 
             // Restore chat states from database
             restoreChatStates();
-
+            // initialise the inand out box
+            inAndOutBox = new InAndOutBox(this, databaseManager);
+            inAndOutBox.start();
             log.info("User {} logged in successfully with {} chat(s) restored.", username, activeChats.size());
             loggedIn.set(true);
             loggedOut.set(false);
@@ -94,7 +97,10 @@ public class ChatCore {
     }
 
     public void logout() {
-        stopAutoFetch();
+
+        if (inAndOutBox != null) {
+            inAndOutBox.stop();
+        }
         log.info("User {} logged out.", currentUser);
         currentUser = null;
         activeChats.clear();
@@ -243,7 +249,7 @@ public class ChatCore {
         activeChats.forEach(chat -> names.add(chat.toString()));
         return names;
     }
-
+    // sendmessage is now mainly in the inandoutbox
     public void sendMessage(int chatIndex, String message) {
         // 0 = "➕ New Chat (BUMP)", real chats start at 1
         chatIndex -= 1;
@@ -260,195 +266,24 @@ public class ChatCore {
         }
 
         try {
-            // 1. Generate new idx' and tag'
-            long nextIdx = ChatCrypto.makeNewIdx();
-            byte[] nextTagBytes = ChatCrypto.makeNewTag();
-            String nextTag = ChatCrypto.tagToBase64(nextTagBytes);
-
-            // 2. Build protobuf message
-            ChatProto.ChatPayload chatPayload = ChatProto.ChatPayload.newBuilder()
-                    .setMessage(message)
-                    .setNextIdx(nextIdx)
-                    .setNextTag(ByteString.copyFrom(nextTagBytes))
-                    .build();
-
-            byte[] payloadBytes = chatPayload.toByteArray();
-
-            // 3. Encrypt payload to bytes
-            byte[] encryptedPayload = ChatCrypto.encryptPayloadBytes(payloadBytes, chat.sendKey);
-
-            // 4. Hash current tag (which is a Base64 string) to get the tag for the server
-            String tagString = Encryption.preimageToTag(chat.sendTag);
-
-            log.info("SEND: currentTag(base64)={}, tagHash={}", chat.sendTag, tagString);
-
-            // 5. Send to server at current idx
-            bulletinBoard.add((int) chat.sendIdx, encryptedPayload, tagString);
-
-            log.info("Sent encrypted message at idx {} with tag {}", chat.sendIdx, tagString);
-
-            // 6. Update local state to idx', tag', key'
-            chat.sendIdx = nextIdx;
-            chat.sendTag = nextTag;
-            chat.sendKey = ChatCrypto.makeNewSecretKey(chat.sendKey);
-
+            // add it locally to the chat state and database as UNSENT
+            // this is for the ui
             chat.addSentMessage(message, currentUser);
 
-            // 7. Persist message and updated state to database
+           // save it in the db as unsent
             if (databaseManager != null) {
-                databaseManager.addMessage(chat.recipient, message, true);
-                byte[] sendKeyBytes = chat.sendKey.getEncoded();
-                byte[] recvKeyBytes = chat.recvKey == null ? null : chat.recvKey.getEncoded();
-                databaseManager.upsertChatState(chat.recipient, sendKeyBytes, recvKeyBytes,
-                    chat.sendIdx, chat.recvIdx, chat.sendTag, chat.recvTag);
+
+                databaseManager.addMessage(chat.recipient, message,  true,false);
             }
+
+            log.info("Bericht lokaal gebufferd voor verzending naar {}", chat.recipient);
+
+            // the outboox is trying to send it once it has been added to the db
+
+
         } catch (Exception e) {
-            log.error("Exception while sending message", e);
+            log.error("Exception while buffering message", e);
         }
-    }
-    public void setOnMessageUpdate(Runnable onMessageUpdate) {
-        this.onMessageUpdate = onMessageUpdate;
-    }
-    public void startAutoFetch() {
-        if (isFetching) return;
-        isFetching = true;
-
-        autoFetchThread = new Thread(() -> {
-            log.info("Auto-fetch thread started.");
-            long currentSleepTime = 10; // Start with 10ms
-
-            while (isFetching) {
-                boolean anyNewMessageFound = false;
-
-                // Create a copy to avoid ConcurrentModificationException if user adds chat while fetching
-                List<ChatState> chatsSnapshot;
-                synchronized (activeChats) {
-                    chatsSnapshot = new ArrayList<>(activeChats);
-                }
-
-                for (int i = 0; i < chatsSnapshot.size(); i++) {
-                    ChatState chat = chatsSnapshot.get(i);
-
-                    // Only attempt fetch if we can receive
-                    if (chat.canReceive()) {
-                        int preFetchSize = chat.getMessages().size();
-                        try {
-                            // listIndex is i + 1 because 0 is reserved for "New Chat" in your logic
-                            fetchMessages(i + 1);
-                        } catch (RemoteException e) {
-                            log.error("Auto-fetch connection error", e);
-                        }
-                        int postFetchSize = chat.getMessages().size();
-
-                        if (postFetchSize > preFetchSize) {
-                            anyNewMessageFound = true;
-                        }
-                    }
-                }
-
-                if (anyNewMessageFound) {
-                    // Reset backoff to fast polling
-                    currentSleepTime = 10;
-
-                    // Notify UI to refresh (if callback is set)
-                    if (onMessageUpdate != null) {
-                        onMessageUpdate.run();
-                    }
-                } else {
-                    // Backoff Strategy
-                    if (currentSleepTime == 10) {
-                        currentSleepTime =  250;
-                    } else if (currentSleepTime == 250) {
-                        currentSleepTime = 500;
-                    } else if (currentSleepTime == 500) {
-                        currentSleepTime = 2000; // Jump to 2 seconds
-                    } else if (currentSleepTime == 2000) {
-                        currentSleepTime = 4000; // Max out at 4 seconds
-                    }else{
-                            currentSleepTime = 4000; //  Max out at 4 seconds
-
-                    }
-                }
-
-                try {
-                    Thread.sleep(currentSleepTime);
-                } catch (InterruptedException e) {
-                    log.info("Auto-fetch interrupted, stopping.");
-                    break;
-                }
-            }
-        });
-
-        autoFetchThread.setDaemon(true); // Ensure thread dies if app closes
-        autoFetchThread.start();
-    }
-
-    public void stopAutoFetch() {
-        isFetching = false;
-        if (autoFetchThread != null) {
-            autoFetchThread.interrupt();
-        }
-        log.info("Auto-fetch stopped.");
-    }
-    public boolean fetchMessages(int listIndex) throws RemoteException {
-
-        int idx = listIndex - 1;
-        if (idx < 0 || idx >= activeChats.size()) {
-            log.error("No valid chat selected for fetching messages.");
-            return false;
-        }
-
-        ChatState chat = activeChats.get(idx);
-
-        if (!chat.canReceive()) {
-            log.error("Cannot receive - this is a send-only chat with {}", chat.recipient);
-            return false;
-        }
-
-        while (true) {
-            log.info("FETCH: recvIdx={}, recvTag(base64)={}", chat.recvIdx, chat.recvTag);
-
-            Pair pair = bulletinBoard.get((int) chat.recvIdx, chat.recvTag);
-            if (pair == null) {
-                log.info("FETCH: No message found");
-                break;
-            }
-
-            log.info("FETCH: Found message!");
-
-            try {
-                byte[] payloadBytes = ChatCrypto.decryptPayloadBytes(pair.value(), chat.recvKey);
-                ChatProto.ChatPayload chatPayload = ChatProto.ChatPayload.parseFrom(payloadBytes);
-
-                String receivedMessage = chatPayload.getMessage();
-                long nextIdx = chatPayload.getNextIdx();
-                byte[] nextTagBytes = chatPayload.getNextTag().toByteArray();
-                String nextTag = ChatCrypto.tagToBase64(nextTagBytes);
-
-                log.info("Received message: {}", receivedMessage);
-
-                chat.addReceivedMessage(receivedMessage);
-
-                chat.recvIdx = nextIdx;
-                chat.recvTag = nextTag;
-                chat.recvKey = ChatCrypto.makeNewSecretKey(chat.recvKey);
-
-                // Persist received message and updated state to database
-                if (databaseManager != null) {
-                    databaseManager.addMessage(chat.recipient, receivedMessage, false);
-                    byte[] sendKeyBytes = chat.sendKey == null ? null : chat.sendKey.getEncoded();
-                    byte[] recvKeyBytes = chat.recvKey.getEncoded();
-                    databaseManager.upsertChatState(chat.recipient, sendKeyBytes, recvKeyBytes,
-                        chat.sendIdx, chat.recvIdx, chat.sendTag, chat.recvTag);
-                }
-
-            } catch (Exception e) {
-                log.error("Exception while decrypting message", e);
-                break;
-            }
-        }
-
-        return true;
     }
 
     public List<Message> getMessagesForChat(int listIndex) {
@@ -471,4 +306,31 @@ public class ChatCore {
         return activeChats.get(idx).canReceive();
     }
 
+
+    // get the chatstate by recipient name
+    public Optional<ChatState> getChatStateByRecipient(String recipient) {
+        return activeChats.stream()
+                .filter(c -> c.recipient.equals(recipient))
+                .findFirst();
+    }
+
+
+    // gives a snapshot of the active chat states. Used by the outbox
+    public List<ChatState> getActiveChatsSnapshot() {
+        synchronized (activeChats) {
+            return new ArrayList<>(activeChats);
+        }
+    }
+
+
+    // Callback registration for message updates
+    public void setOnMessageUpdateCallback(Runnable callback) {
+        this.onMessageUpdateCallback = callback;
+    }
+    // Notify GUI of message update
+    public void notifyMessageUpdate() {
+        if (onMessageUpdateCallback != null) {
+            Platform.runLater(onMessageUpdateCallback);
+        }
+    }
 }
