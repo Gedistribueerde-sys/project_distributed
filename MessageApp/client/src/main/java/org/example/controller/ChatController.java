@@ -34,8 +34,7 @@ public class ChatController {
     private TextField messageField;
     @FXML
     private Button sendButton;
-    @FXML
-    private Button fetchButton;
+
 
     private ChatCore chatCore;
     private Stage stage;
@@ -70,8 +69,7 @@ public class ChatController {
                 // Hide buttons for new chat
                 sendButton.setVisible(false);
                 sendButton.setManaged(false);
-                fetchButton.setVisible(false);
-                fetchButton.setManaged(false);
+
                 messageField.setVisible(false);
                 messageField.setManaged(false);
 
@@ -90,8 +88,6 @@ public class ChatController {
                 messageField.setVisible(canSend);
                 messageField.setManaged(canSend);
 
-                fetchButton.setVisible(canReceive);
-                fetchButton.setManaged(canReceive);
 
                 // Refresh the message view and state
                 refreshMessagesView(selectedIndex);
@@ -106,6 +102,23 @@ public class ChatController {
         // set the custom cell factory now that controller/current user is available
         messagesView.setCellFactory(lv -> new MessageCell(chatCore.getCurrentUser()));
         updateChatList();
+
+        // 1. Define what happens when the background thread finds a message
+        chatCore.setOnMessageUpdate(() -> {
+            Platform.runLater(() -> {
+                // Refresh the view if a chat is currently selected
+                int selectedIndex = chatList.getSelectionModel().getSelectedIndex();
+                if (selectedIndex > 0) {
+                    refreshMessagesView(selectedIndex);
+                    String debugText = chatCore.getDebugStateForIndex(selectedIndex);
+                    stateView.setText(debugText);
+                }
+                // Optional: Play a sound or show a notification icon here
+            });
+        });
+
+        // 2. Start the auto-fetcher
+        chatCore.startAutoFetch();
     }
 
     @FXML

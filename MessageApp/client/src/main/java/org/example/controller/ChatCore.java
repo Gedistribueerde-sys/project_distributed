@@ -23,6 +23,11 @@ public class ChatCore {
     private final List<ChatState> activeChats = new ArrayList<>();
     private final KeyStoreImpl keyStore = new KeyStoreImpl();
     private String currentUser;
+
+    private volatile boolean isFetching = false;
+    private Thread autoFetchThread;
+    private Runnable onMessageUpdate;
+
     private final BulletinBoard bulletinBoard;
     private DatabaseManager databaseManager;
 
@@ -89,6 +94,7 @@ public class ChatCore {
     }
 
     public void logout() {
+        stopAutoFetch();
         log.info("User {} logged out.", currentUser);
         currentUser = null;
         activeChats.clear();
@@ -299,6 +305,90 @@ public class ChatCore {
         } catch (Exception e) {
             log.error("Exception while sending message", e);
         }
+    }
+    public void setOnMessageUpdate(Runnable onMessageUpdate) {
+        this.onMessageUpdate = onMessageUpdate;
+    }
+    public void startAutoFetch() {
+        if (isFetching) return;
+        isFetching = true;
+
+        autoFetchThread = new Thread(() -> {
+            log.info("Auto-fetch thread started.");
+            long currentSleepTime = 10; // Start with 10ms
+
+            while (isFetching) {
+                boolean anyNewMessageFound = false;
+
+                // Create a copy to avoid ConcurrentModificationException if user adds chat while fetching
+                List<ChatState> chatsSnapshot;
+                synchronized (activeChats) {
+                    chatsSnapshot = new ArrayList<>(activeChats);
+                }
+
+                for (int i = 0; i < chatsSnapshot.size(); i++) {
+                    ChatState chat = chatsSnapshot.get(i);
+
+                    // Only attempt fetch if we can receive
+                    if (chat.canReceive()) {
+                        int preFetchSize = chat.getMessages().size();
+                        try {
+                            // listIndex is i + 1 because 0 is reserved for "New Chat" in your logic
+                            fetchMessages(i + 1);
+                        } catch (RemoteException e) {
+                            log.error("Auto-fetch connection error", e);
+                        }
+                        int postFetchSize = chat.getMessages().size();
+
+                        if (postFetchSize > preFetchSize) {
+                            anyNewMessageFound = true;
+                        }
+                    }
+                }
+
+                if (anyNewMessageFound) {
+                    // Reset backoff to fast polling
+                    currentSleepTime = 10;
+
+                    // Notify UI to refresh (if callback is set)
+                    if (onMessageUpdate != null) {
+                        onMessageUpdate.run();
+                    }
+                } else {
+                    // Backoff Strategy
+                    if (currentSleepTime == 10) {
+                        currentSleepTime =  250;
+                    } else if (currentSleepTime == 250) {
+                        currentSleepTime = 500;
+                    } else if (currentSleepTime == 500) {
+                        currentSleepTime = 2000; // Jump to 2 seconds
+                    } else if (currentSleepTime == 2000) {
+                        currentSleepTime = 4000; // Max out at 4 seconds
+                    }else{
+                            currentSleepTime = 4000; //  Max out at 4 seconds
+
+                    }
+                }
+
+                try {
+                    Thread.sleep(currentSleepTime);
+                } catch (InterruptedException e) {
+                    log.info("Auto-fetch interrupted, stopping.");
+                    break;
+                }
+            }
+        });
+
+        autoFetchThread.setDaemon(true); // Ensure thread dies if app closes
+        autoFetchThread.start();
+    }
+
+    public void stopAutoFetch() {
+        isFetching = false;
+        if (autoFetchThread != null) {
+            autoFetchThread.interrupt();
+        }
+        log.info("Auto-fetch stopped.");
     }
     public boolean fetchMessages(int listIndex) throws RemoteException {
 

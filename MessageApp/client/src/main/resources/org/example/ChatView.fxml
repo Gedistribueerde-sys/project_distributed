@@ -42,7 +42,7 @@
                                     <children>
                                         <TextField fx:id="messageField" onAction="#handleSend" promptText="Type a message..." styleClass="message-field" HBox.hgrow="ALWAYS" />
                                         <Button fx:id="sendButton" onAction="#handleSend" text="Send" />
-                                        <Button fx:id="fetchButton" onAction="#handleFetch" text="Fetch" />
+
                                     </children>
                                 </HBox>
                             </children>
