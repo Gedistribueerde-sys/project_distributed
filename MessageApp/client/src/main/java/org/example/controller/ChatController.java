@@ -64,7 +64,8 @@ public class ChatController {
 
             messagesView.getItems().clear();
 
-            if (newVal.startsWith("➕")) {
+
+            if (selectedIndex == 0) {
                 stateView.clear();
                 messagesView.getItems().add(new Message("system", "Use the dialog to start a chat..."));
                 // Hide buttons for new chat

@@ -73,7 +73,7 @@ public class InAndOutBox implements Runnable {
 
             Random random = new Random();
             int baseSleep = 1000;
-            int maxSleep = 16000;
+            int maxSleep = 4000;
 
             if (anySuccess) {
                 currentSleepTime = baseSleep;
