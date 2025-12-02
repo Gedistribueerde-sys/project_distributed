@@ -51,8 +51,6 @@
     -fx-font-size: 11;
     -fx-background-color: #282a36; /* Dark background */
     -fx-text-fill: #f8f8f2; /* Light text */
-    -fx-border-color: #6272a4;
-    -fx-border-width: 1;
     -fx-background-radius: 10;
     -fx-border-radius: 10;
     -fx-background-insets: 0; /* Remove default insets */
