@@ -7,13 +7,16 @@ import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import org.example.GUI.GUI;
 
-public class LoginController {
+public class RegisterController {
 
     @FXML
     private TextField usernameField;
 
     @FXML
     private PasswordField passwordField;
+
+    @FXML
+    private PasswordField confirmPasswordField;
 
     @FXML
     private Label statusLabel;
@@ -30,14 +33,20 @@ public class LoginController {
     }
 
     @FXML
-    private void handleLogin() {
+    private void handleRegister() {
         String user = usernameField.getText();
         String pass = passwordField.getText();
-        if (chatCore.login(user, pass)) {
-            statusLabel.setText("Login successful!");
-            // The GUI class will handle the scene change
+        String confirmPass = confirmPasswordField.getText();
+
+        if (!pass.equals(confirmPass)) {
+            statusLabel.setText("Passwords do not match.");
+            return;
+        }
+
+        if (chatCore.register(user, pass)) {
+            statusLabel.setText("Registration successful, please log in now.");
         } else {
-            statusLabel.setText("Login failed");
+            statusLabel.setText("Registration failed (name already exists or is invalid)");
         }
     }
 

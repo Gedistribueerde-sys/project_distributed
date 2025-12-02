@@ -31,20 +31,22 @@
                 <HBox alignment="CENTER_LEFT" styleClass="top-bar" spacing="10">
                     <children>
                         <Label fx:id="userLabel" styleClass="user-label" text="Logged in as: " />
-                        <Region HBox.hgrow="ALWAYS" />
-                        <Button fx:id="logoutButton" onAction="#handleLogout" text="Logout" />
-                    </children>
-                </HBox>
-                <TextArea fx:id="stateView" editable="false" prefRowCount="5" wrapText="true" styleClass="state-view" />
-                <ListView fx:id="messagesView" styleClass="messages-view" VBox.vgrow="ALWAYS" />
-                <HBox fx:id="inputBar" spacing="10">
-                    <children>
-                        <TextField fx:id="messageField" promptText="Type a message..." styleClass="message-field" HBox.hgrow="ALWAYS" />
-                        <Button fx:id="sendButton" onAction="#handleSend" text="Send" />
-                        <Button fx:id="fetchButton" onAction="#handleFetch" text="Fetch" />
-                    </children>
-                </HBox>
-            </children>
-        </VBox>
+                                        <Region HBox.hgrow="ALWAYS" />
+                                        <Button fx:id="logoutButton" onAction="#handleLogout" text="Logout" />
+                                        <Button fx:id="themeToggleButton" onAction="#handleThemeToggle" text="Toggle Theme" />
+                                    </children>
+                                </HBox>
+                                <TextArea fx:id="stateView" editable="false" prefRowCount="5" wrapText="true" styleClass="state-view" />
+                                <ListView fx:id="messagesView" styleClass="messages-view" VBox.vgrow="ALWAYS" />
+                                <HBox fx:id="inputBar" spacing="10">
+                                    <children>
+                                        <TextField fx:id="messageField" onAction="#handleSend" promptText="Type a message..." styleClass="message-field" HBox.hgrow="ALWAYS" />
+                                        <Button fx:id="sendButton" onAction="#handleSend" text="Send" />
+                                        <Button fx:id="fetchButton" onAction="#handleFetch" text="Fetch" />
+                                    </children>
+                                </HBox>
+                            </children>
+                        </VBox>
+                        
     </items>
 </SplitPane>

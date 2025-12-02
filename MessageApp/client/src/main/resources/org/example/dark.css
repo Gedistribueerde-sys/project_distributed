@@ -1,0 +1,150 @@
+/* dark.css - Reverted to "Dracula" Theme with Borders */
+
+.root {
+    -fx-font-family: 'Inter', 'San Francisco', 'System';
+    -fx-background-color: #282a36;
+}
+
+/* --- Buttons --- */
+.button {
+    -fx-background-color: #bd93f9; /* Purple */
+    -fx-text-fill: #f8f8f2;
+    -fx-font-weight: bold;
+    -fx-background-radius: 20;
+    -fx-border-radius: 20;
+    -fx-padding: 10 20;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 10, 0, 0, 3);
+}
+
+.button:hover {
+    -fx-background-color: #ff79c6; /* Pink on hover */
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 15, 0, 0, 4);
+}
+
+#sendButton { -fx-background-color: #50fa7b; }
+#logoutButton { -fx-background-color: #ff5555; }
+#themeToggleButton { -fx-background-color: #ffb86c; }
+
+
+/* --- Text Fields & Password Fields --- */
+.text-field, .password-field {
+    -fx-background-color: #44475a;
+    -fx-border-color: #6272a4;
+    -fx-border-width: 1;
+    -fx-background-radius: 10;
+    -fx-border-radius: 10;
+    -fx-padding: 8 12;
+    -fx-prompt-text-fill: #6272a4;
+    -fx-text-fill: #f8f8f2;
+    -fx-highlight-fill: #ff79c6;
+    -fx-highlight-text-fill: #282a36;
+}
+
+.text-field:focused, .password-field:focused {
+    -fx-border-color: #bd93f9;
+    -fx-border-width: 2;
+    -fx-effect: dropshadow(gaussian, rgba(189, 147, 249, 0.3), 10, 0, 0, 2);
+}
+
+.state-view {
+    -fx-font-family: monospace;
+    -fx-font-size: 11;
+    -fx-background-color: #282a36; /* Dark background */
+    -fx-text-fill: #f8f8f2; /* Light text */
+    -fx-border-color: #6272a4;
+    -fx-border-width: 1;
+    -fx-background-radius: 10;
+    -fx-border-radius: 10;
+    -fx-background-insets: 0; /* Remove default insets */
+}
+
+/* Ensure all internal parts of the TextArea have the correct background */
+.state-view .viewport {
+    -fx-background-color: #282a36;
+    -fx-background-radius: 10;
+}
+
+.state-view .scroll-pane {
+    -fx-background-color: #282a36;
+    -fx-background-radius: 10;
+}
+
+.state-view .content {
+    -fx-background-color: #282a36;
+    -fx-background-radius: 10;
+}
+/* --- List Views --- */
+.list-view {
+    -fx-background-color: #44475a;
+    -fx-border-width: 0; /* Remove border */
+    -fx-border-radius: 10;
+    -fx-background-radius: 10;
+}
+
+
+/* Specific styling for the messages view if it has a specific class */
+.messages-view {
+    -fx-background-color: #44475a;
+}
+
+
+.list-cell {
+    -fx-padding: 15px;
+    -fx-text-fill: #f8f8f2;
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-font-size: 14px;
+}
+
+.list-cell:filled:hover {
+    -fx-background-color: #6272a4;
+    -fx-text-fill: #f8f8f2; /* Ensure text is visible on hover */
+}
+.list-cell:filled:selected { -fx-background-color: #9969d6; -fx-text-fill: #f8f8f2; }
+
+/* --- Other controls --- */
+.label { -fx-text-fill: #f8f8f2; -fx-font-size: 14px; }
+
+.split-pane {
+    -fx-background-color: #282a36;
+    -fx-padding: 0;
+}
+
+.split-pane > .split-pane-divider {
+    -fx-background-color: #6272a4;
+    -fx-padding: 0 1 0 1;
+}
+
+.text-area {
+    -fx-background-color: #44475a;
+    -fx-border-color: #6272a4;
+    -fx-border-radius: 10;
+    -fx-background-radius: 10;
+    -fx-highlight-fill: #ff79c6;
+    -fx-highlight-text-fill: #282a36;
+}
+
+.text-area .content {
+    -fx-background-color: #44475a;
+    -fx-background-radius: 10;
+    -fx-text-fill: #f8f8f2;
+}
+
+/* --- Chat Bubbles --- */
+.message-bubble { -fx-padding: 10px 15px; -fx-background-radius: 15px; -fx-max-width: 70%; -fx-wrap-text: true; }
+.list-cell .message-bubble.incoming {
+    -fx-background-color: #999999; /* Pure white background */
+    -fx-text-fill: #ffffff; /* Very dark text for high contrast */
+    -fx-background-radius: 15px 15px 15px 0px;
+}
+
+.message-bubble.outgoing {
+    -fx-background-color: #9969d6; /* Slightly darker purple */
+    -fx-text-fill: #ffffff;
+    -fx-background-radius: 15px 15px 0px 15px;
+}
+
+/* --- VBox containers for chat --- */
+#leftBox, #rightBox {
+    -fx-background-color: #282a36;
+}

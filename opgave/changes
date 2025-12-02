@@ -1,7 +1,4 @@
-- storing and updating keys in keystore should be correcter / robuster
 - make sure the client app doesn't crash when server is offline for a while (buffering and queuing to send messages later?)
-- logout is not implemented
-- storing messages
 - make sure before sending to check receiving messages
 - refactor packages
 

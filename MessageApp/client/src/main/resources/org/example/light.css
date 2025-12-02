@@ -1,0 +1,123 @@
+/* modern.css - Reverted to "Beautiful" Light Theme */
+
+.root {
+    -fx-font-family: 'Inter', 'San Francisco', 'System';
+    -fx-background-color: #f4f4f9;
+}
+
+/* --- Buttons --- */
+.button {
+    -fx-background-color: #3498db;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-background-radius: 20;
+    -fx-border-radius: 20;
+    -fx-padding: 10 20;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 10, 0, 0, 3);
+}
+
+.button:hover {
+    -fx-background-color: #2980b9;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 15, 0, 0, 4);
+}
+
+/* --- Text Fields & Password Fields --- */
+.text-field, .password-field {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #dcdce6;
+    -fx-border-width: 1;
+    -fx-background-radius: 10;
+    -fx-border-radius: 10;
+    -fx-padding: 8 12;
+    -fx-prompt-text-fill: #aab2b7;
+    -fx-text-fill: #2c3e50;
+    -fx-highlight-fill: #3498db;
+    -fx-highlight-text-fill: white;
+}
+
+.text-field:focused, .password-field:focused {
+    -fx-border-color: #3498db;
+    -fx-border-width: 2;
+    -fx-effect: dropshadow(gaussian, rgba(52, 152, 219, 0.3), 10, 0, 0, 2);
+}
+
+/* --- List Views --- */
+.list-view {
+    -fx-background-color: #ffffff;
+    -fx-border-width: 0; /* Remove border */
+    -fx-border-radius: 10;
+    -fx-background-radius: 10;
+}
+
+.list-cell {
+    -fx-padding: 15px;
+    -fx-text-fill: #2c3e50;
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-font-size: 14px;
+}
+
+.list-cell:filled:hover {
+    -fx-background-color: #eaf3fb;
+    -fx-text-fill: #2980b9;
+}
+
+.list-cell:filled:selected {
+    -fx-background-color: #3498db;
+    -fx-text-fill: white;
+}
+
+/* --- Other controls --- */
+.label {
+    -fx-text-fill: #2c3e50;
+    -fx-font-size: 14px;
+}
+
+.split-pane {
+    -fx-background-color: #f4f4f9;
+    -fx-padding: 0;
+}
+
+.split-pane > .split-pane-divider {
+    -fx-background-color: #dcdce6;
+    -fx-padding: 0 1 0 1;
+}
+
+.text-area {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #dcdce6;
+    -fx-border-radius: 10;
+    -fx-background-radius: 10;
+    -fx-highlight-fill: #3498db;
+    -fx-highlight-text-fill: white;
+}
+
+.text-area .content {
+    -fx-background-color: #ffffff;
+    -fx-background-radius: 10;
+}
+
+/* --- Chat Bubbles --- */
+.message-bubble {
+    -fx-padding: 10px 15px;
+    -fx-background-radius: 15px;
+    -fx-max-width: 70%;
+    -fx-wrap-text: true;
+}
+
+.message-bubble.incoming {
+    -fx-background-color: #e0e0e0;
+    -fx-text-fill: #2c3e50;
+    -fx-background-radius: 15px 15px 15px 0px;
+}
+
+.message-bubble.outgoing {
+    -fx-background-color: #3498db;
+    -fx-text-fill: white;
+    -fx-background-radius: 15px 15px 0px 15px;
+}
+
+/* --- VBox containers for chat --- */
+#leftBox, #rightBox {
+    -fx-background-color: #f4f4f9;
+}

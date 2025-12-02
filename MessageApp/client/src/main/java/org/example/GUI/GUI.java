@@ -6,19 +6,20 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 import org.example.Client;
-import org.example.controller.LoginController;
-import org.example.controller.ChatController;
-import org.example.controller.ChatCore;
+import org.example.controller.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.Objects;
 
 public class GUI extends Application {
     private static final Logger log = LoggerFactory.getLogger(GUI.class);
 
     private ChatCore chatCore;
     private Stage stage;
+    private boolean isDarkTheme = false;
+    private final String darkThemeUrl = Objects.requireNonNull(getClass().getResource("/org/example/dark.css")).toExternalForm();
 
     @Override
     public void start(Stage stage) {
@@ -26,18 +27,34 @@ public class GUI extends Application {
         this.stage = stage;
 
         stage.setTitle("Message App");
-        showLoginScene();
+        showStartupScene();
         stage.show();
     }
 
-    private void showLoginScene() {
+    public void showStartupScene() {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/org/example/StartupView.fxml"));
+            Parent root = loader.load();
+
+            StartupController startupController = loader.getController();
+            startupController.setGui(this);
+
+            Scene scene = new Scene(root, 400, 250);
+            applyTheme(scene);
+            stage.setScene(scene);
+        } catch (IOException e) {
+            log.error("Failed to load StartupView.fxml", e);
+        }
+    }
+
+    public void showLoginScene() {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/org/example/LoginView.fxml"));
             Parent root = loader.load();
 
             LoginController loginController = loader.getController();
             loginController.setController(chatCore);
-            loginController.setStage(stage);
+            loginController.setGui(this);
 
             // Add a listener to the controller's login status
             chatCore.loggedInProperty().addListener((obs, oldVal, newVal) -> {
@@ -47,9 +64,27 @@ public class GUI extends Application {
             });
 
             Scene scene = new Scene(root, 400, 250);
+            applyTheme(scene);
             stage.setScene(scene);
         } catch (IOException e) {
             log.error("Failed to load LoginView.fxml", e);
+        }
+    }
+
+    public void showRegisterScene() {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/org/example/RegisterView.fxml"));
+            Parent root = loader.load();
+
+            RegisterController registerController = loader.getController();
+            registerController.setController(chatCore);
+            registerController.setGui(this);
+
+            Scene scene = new Scene(root, 400, 300);
+            applyTheme(scene);
+            stage.setScene(scene);
+        } catch (IOException e) {
+            log.error("Failed to load RegisterView.fxml", e);
         }
     }
 
@@ -60,7 +95,7 @@ public class GUI extends Application {
 
             ChatController chatController = loader.getController();
             chatController.setController(chatCore);
-            chatController.setStage(stage);
+            chatController.setGui(this);
             chatController.setup();
 
             // Add a listener to the controller's logout status
@@ -71,9 +106,27 @@ public class GUI extends Application {
             });
 
             Scene scene = new Scene(root, 900, 600);
+            applyTheme(scene);
             stage.setScene(scene);
         } catch (IOException e) {
             log.error("Failed to load ChatView.fxml", e);
         }
     }
+
+    private void applyTheme(Scene scene) {
+        scene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("/org/example/light.css")).toExternalForm());
+        if (isDarkTheme) {
+            scene.getStylesheets().add(darkThemeUrl);
+        }
+    }
+
+    public void toggleTheme() {
+        isDarkTheme = !isDarkTheme;
+        Scene scene = stage.getScene();
+        if (scene != null) {
+            scene.getStylesheets().clear();
+            applyTheme(scene);
+        }
+    }
 }
+

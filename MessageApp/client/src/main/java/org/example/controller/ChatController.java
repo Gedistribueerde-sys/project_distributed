@@ -10,6 +10,7 @@ import javafx.scene.Scene;
 import javafx.stage.Modality;
 import org.example.GUI.Message;
 import org.example.GUI.MessageCell;
+import org.example.GUI.GUI;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,9 +39,14 @@ public class ChatController {
 
     private ChatCore chatCore;
     private Stage stage;
+    private GUI gui;
 
     public void setController(ChatCore chatCore) {
         this.chatCore = chatCore;
+    }
+
+    public void setGui(GUI gui) {
+        this.gui = gui;
     }
 
     public void setStage(Stage stage) {
@@ -149,6 +155,11 @@ public class ChatController {
             log.error("Error fetching messages", ex);
             new Alert(Alert.AlertType.ERROR, "Error fetching messages.").showAndWait();
         }
+    }
+
+    @FXML
+    private void handleThemeToggle() {
+        gui.toggleTheme();
     }
 
     private void refreshMessagesView(int selectedIndex) {
