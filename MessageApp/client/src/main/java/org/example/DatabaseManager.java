@@ -46,7 +46,6 @@ public class DatabaseManager {
         initializeDatabase();
         log.info("Database initialized for user: {}", username);
     }
-
     private void initializeDatabase() {
         String createSessionTable =
                 "CREATE TABLE IF NOT EXISTS chat_sessions (" +
@@ -55,8 +54,8 @@ public class DatabaseManager {
                         "receive_key BLOB, " +
                         "send_next_idx INTEGER, " +
                         "receive_next_idx INTEGER, " +
-                        "send_tag TEXT, " +
-                        "recv_tag TEXT)";
+                        "send_tag TEXT, " + // New column is now part of the initial creation
+                        "recv_tag TEXT)";   // New column is now part of the initial creation
 
         String createMsgTable =
                 "CREATE TABLE IF NOT EXISTS messages (" +
@@ -65,6 +64,7 @@ public class DatabaseManager {
                         "timestamp INTEGER, " +
                         "is_sent INTEGER, " +
                         "content BLOB, " +
+                        "is_server_sent INTEGER DEFAULT 0, " + // New column with default is now part of the initial creation
                         "FOREIGN KEY(recipient_id) REFERENCES chat_sessions(recipient_id))";
 
         try (Connection conn = DriverManager.getConnection(url);
@@ -72,24 +72,7 @@ public class DatabaseManager {
             stmt.execute(createSessionTable);
             stmt.execute(createMsgTable);
 
-            // Migration: Add new columns if they don't exist (for existing databases)
-            try {
-                stmt.execute("ALTER TABLE chat_sessions ADD COLUMN send_tag TEXT");
-                stmt.execute("ALTER TABLE chat_sessions ADD COLUMN recv_tag TEXT");
-                // Copy current_tag to both if it exists
-                stmt.execute("UPDATE chat_sessions SET send_tag = current_tag, recv_tag = current_tag WHERE send_tag IS NULL");
-                log.info("Migrated database schema to separate send_tag and recv_tag");
-
-            } catch (SQLException e) {
-                // Columns already exist, ignore
-            }
-            try {
-                // Dit zorgt ervoor dat de kolom wordt toegevoegd als deze nog niet bestaat
-                stmt.execute("ALTER TABLE messages ADD COLUMN is_server_sent INTEGER DEFAULT 0");
-                log.info("Migrated messages schema: added is_server_sent column.");
-            } catch (SQLException e) {
-                // Kolom bestaat al, negeer
-            }
+            log.info("Database schema initialized successfully with latest columns.");
 
         } catch (SQLException e) {
             log.error("Failed to initialize database", e);
