@@ -73,10 +73,23 @@ public class InAndOutBox implements Runnable {
     @Override
     public void run() {
         long currentBackoff = 1000;
-        final int maxBackoff = 8000; // Max backoff duration
-        final int baseSleep = 500;   // Base sleep when work is done
+        final int maxBackoff = 8000;
+        final int baseSleep = 500;
 
         while (running) {
+            // Check connection once per loop
+            if (!ensureConnected()) {
+                // If connection fails, apply exponential backoff and retry in the next loop
+                long sleepTime = currentBackoff + random.nextInt(1000);
+                currentBackoff = Math.min(currentBackoff * 2, maxBackoff);
+                try {
+                    Thread.sleep(sleepTime);
+                } catch (InterruptedException e) {
+                    break;
+                }
+                continue; // Skip processing if not connected
+            }
+
             boolean didWork = false;
 
             if (!running) break;
@@ -90,7 +103,6 @@ public class InAndOutBox implements Runnable {
                 sleepTime = baseSleep;
                 currentBackoff = 1000; // Reset backoff on success
             } else {
-                // No work done, use exponential backoff with jitter
                 sleepTime = currentBackoff + random.nextInt(1000);
                 currentBackoff = Math.min(currentBackoff * 2, maxBackoff);
             }
@@ -98,7 +110,7 @@ public class InAndOutBox implements Runnable {
             try {
                 Thread.sleep(sleepTime);
             } catch (InterruptedException e) {
-                break;  // exit cleanly
+                break;
             }
         }
     }
@@ -119,7 +131,7 @@ public class InAndOutBox implements Runnable {
     }
 
     private boolean processOneOutboxMessageSafely() {
-        if (databaseManager == null || !ensureConnected()) {
+        if (databaseManager == null) {
             return false;
         }
 
@@ -187,7 +199,7 @@ public class InAndOutBox implements Runnable {
     }
 
     private boolean processOneInboxMessageSafely() {
-        if (databaseManager == null || !ensureConnected()) {
+        if (databaseManager == null) {
             return false;
         }
 
