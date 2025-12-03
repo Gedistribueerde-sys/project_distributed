@@ -22,7 +22,7 @@ public class BulletinBoardImpl implements BulletinBoard {
     }
 
     @Override
-    public void add(int idx, byte[] value, String tag) throws RemoteException {
+    public void add(long idx, byte[] value, String tag) throws RemoteException {
         int index = computeIndex(idx);
         logger.info("ADD at index {}: tag={}, valueSize={} bytes", index, tag, value.length);
 
@@ -35,7 +35,7 @@ public class BulletinBoardImpl implements BulletinBoard {
     }
 
     @Override
-    public Pair get(int idx, String preimage) throws RemoteException {
+    public Pair get(long idx, String preimage) throws RemoteException {
         int index = computeIndex(idx);
         logger.info("GET at index {}: preimage={}", index, preimage);
 
@@ -60,7 +60,7 @@ public class BulletinBoardImpl implements BulletinBoard {
         return null;
     }
 
-    private int computeIndex(int idx) {
-        return ((idx % BOARD_SIZE) + BOARD_SIZE) % BOARD_SIZE;
+    private int computeIndex(long idx) {
+        return (int) ((idx % BOARD_SIZE) + BOARD_SIZE) % BOARD_SIZE;
     }
 }

@@ -82,6 +82,17 @@ public class ChatCore {
             // initialise the inand out box
             inAndOutBox = new InAndOutBox(this, databaseManager);
             inAndOutBox.start();
+
+            // Add a shutdown hook to ensure graceful shutdown of the message processor
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                log.info("Shutdown hook triggered. Stopping message processor...");
+                if (inAndOutBox != null) {
+                    inAndOutBox.stop();
+                    inAndOutBox.join(); // Wait for the thread to finish
+                }
+                log.info("Message processor stopped gracefully.");
+            }));
+
             log.info("User {} logged in successfully with {} chat(s) restored.", username, activeChats.size());
             loggedIn.set(true);
             loggedOut.set(false);

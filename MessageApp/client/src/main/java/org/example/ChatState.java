@@ -24,6 +24,9 @@ public class ChatState {
     // In-memory message storage
     private final List<Message> messages;
 
+    // Backoff timestamp for handling poison messages.
+    public long poisonedBackoffUntil = 0;
+
     public ChatState(String recipient,
                      SecretKey sendKey, long sendIdx, String sendTag,
                      SecretKey recvKey, long recvIdx, String recvTag)
@@ -47,6 +50,13 @@ public class ChatState {
 
     public boolean canReceive() {
         return recvKey != null;
+    }
+
+    /**
+     * @return True if the chat is in a temporary backoff state due to a poison message.
+     */
+    public boolean isPoisoned() {
+        return System.currentTimeMillis() < poisonedBackoffUntil;
     }
 
     public List<Message> getMessages() {

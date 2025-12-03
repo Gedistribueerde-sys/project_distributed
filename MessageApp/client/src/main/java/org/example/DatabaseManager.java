@@ -11,6 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.GeneralSecurityException;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -231,7 +232,7 @@ public class DatabaseManager {
      * @return List of decrypted messages
      */
     public List<Message> loadMessages(String recipient) {
-        String sql = "SELECT * FROM messages WHERE recipient_id = ? ORDER BY timestamp ASC";
+        String sql = "SELECT * FROM messages WHERE recipient_id = ? ORDER BY timestamp ";
         byte[] aad = CryptoUtils.makeAAD(username, recipient);
         List<Message> messages = new ArrayList<>();
 
@@ -311,7 +312,7 @@ public class DatabaseManager {
     public List<PendingMessage> getPendingOutboxMessages() {
         // Load messages where is_sent=1 and is_server_sent=0
         // if the issent = 0 it means its a received message
-        String sql = "SELECT id, recipient_id, content FROM messages WHERE is_sent = 1 AND is_server_sent = 0 ORDER BY timestamp ASC";
+        String sql = "SELECT id, recipient_id, content FROM messages WHERE is_sent = 1 AND is_server_sent = 0 ORDER BY timestamp ";
         List<PendingMessage> pending = new ArrayList<>();
 
         try (Connection conn = DriverManager.getConnection(url);
@@ -335,6 +336,102 @@ public class DatabaseManager {
             throw new RuntimeException(e);
         }
         return pending;
+    }
+
+    /**
+     * Transactionally marks a message as sent to the server and updates the sender's chat state.
+     */
+    public void markMessageAsSentAndUpdateState(long messageId, String recipient, byte[] newSendKey, long newSendIdx, String newSendTag) {
+        String markSentSql = "UPDATE messages SET is_server_sent = 1 WHERE id = ?";
+        String updateStateSql = "UPDATE chat_sessions SET send_key = ?, send_next_idx = ?, send_tag = ? WHERE recipient_id = ?";
+        byte[] aad = CryptoUtils.makeAAD(username, recipient);
+        Connection conn = null;
+        try {
+            conn = DriverManager.getConnection(url);
+            conn.setAutoCommit(false);
+
+            try (PreparedStatement ps = conn.prepareStatement(markSentSql)) {
+                ps.setLong(1, messageId);
+                ps.executeUpdate();
+            }
+
+            commitSentMessageState(recipient, newSendKey, newSendIdx, newSendTag, updateStateSql, aad, conn);
+            log.debug("Transactionally updated state for sent message {}", messageId);
+        } catch (Exception e) {
+            log.error("Transaction failed for sent message {}. Rolling back.", messageId, e);
+            if (conn != null) {
+                try {
+                    conn.rollback();
+                } catch (SQLException ex) {
+                    log.error("Failed to rollback transaction", ex);
+                }
+            }
+            throw new RuntimeException(e);
+        } finally {
+            if (conn != null) {
+                try {
+                    conn.close();
+                } catch (SQLException e) {
+                    log.error("Failed to close connection", e);
+                }
+            }
+        }
+    }
+
+    private void commitSentMessageState(String recipient, byte[] newSendKey, long newSendIdx, String newSendTag, String updateStateSql, byte[] aad, Connection conn) throws SQLException, GeneralSecurityException {
+        try (PreparedStatement ps = conn.prepareStatement(updateStateSql)) {
+            ps.setBytes(1, newSendKey == null ? null : CryptoUtils.encrypt(newSendKey, dbKey, aad));
+            ps.setLong(2, newSendIdx);
+            ps.setString(3, newSendTag);
+            ps.setString(4, recipient);
+            ps.executeUpdate();
+        }
+
+        conn.commit();
+    }
+
+    /**
+     * Transactionally adds a received message and updates the receiver's chat state.
+     */
+    public void addReceivedMessageAndUpdateState(String recipient, String messageText, byte[] newRecvKey, long newRecvIdx, String newRecvTag) {
+        String addMsgSql = "INSERT INTO messages(recipient_id, timestamp, is_sent, is_server_sent, content) VALUES(?,?,?,?,?)";
+        String updateStateSql = "UPDATE chat_sessions SET receive_key = ?, receive_next_idx = ?, recv_tag = ? WHERE recipient_id = ?";
+        byte[] aad = CryptoUtils.makeAAD(username, recipient);
+        Connection conn = null;
+        try {
+            conn = DriverManager.getConnection(url);
+            conn.setAutoCommit(false);
+
+            try (PreparedStatement ps = conn.prepareStatement(addMsgSql)) {
+                ps.setString(1, recipient);
+                ps.setLong(2, System.currentTimeMillis());
+                ps.setInt(3, 0); // is_sent = false
+                ps.setInt(4, 1); // is_server_sent = true
+                ps.setBytes(5, CryptoUtils.encrypt(messageText.getBytes(StandardCharsets.UTF_8), dbKey, aad));
+                ps.executeUpdate();
+            }
+
+            commitSentMessageState(recipient, newRecvKey, newRecvIdx, newRecvTag, updateStateSql, aad, conn);
+            log.debug("Transactionally added received message for {}", recipient);
+        } catch (Exception e) {
+            log.error("Transaction failed for received message for {}. Rolling back.", recipient, e);
+            if (conn != null) {
+                try {
+                    conn.rollback();
+                } catch (SQLException ex) {
+                    log.error("Failed to rollback transaction", ex);
+                }
+            }
+            throw new RuntimeException(e);
+        } finally {
+            if (conn != null) {
+                try {
+                    conn.close();
+                } catch (SQLException e) {
+                    log.error("Failed to close connection", e);
+                }
+            }
+        }
     }
 
 }

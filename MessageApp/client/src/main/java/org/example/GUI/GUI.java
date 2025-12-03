@@ -27,6 +27,15 @@ public class GUI extends Application {
         this.stage = stage;
 
         stage.setTitle("Message App");
+
+        // Ensure the application shuts down gracefully when the window is closed.
+        // This will trigger the JVM shutdown hook in ChatCore.
+        stage.setOnCloseRequest(event -> {
+            log.info("Window close requested. Initiating application shutdown.");
+            Platform.exit();
+            System.exit(0);
+        });
+
         showStartupScene();
         stage.show();
     }
