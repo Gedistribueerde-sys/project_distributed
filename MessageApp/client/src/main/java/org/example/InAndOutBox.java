@@ -169,7 +169,11 @@ public class InAndOutBox implements Runnable {
             log.info("OUTBOX PUSH: Trying to send to {} at idx {} with tag {}", pending.recipient(), chat.sendIdx, tagString);
 
             // 5. SERVER SEND (RMI Call)
-            this.bulletinBoard.add(chat.sendIdx, encryptedPayload, tagString);
+            boolean success = this.bulletinBoard.add(chat.sendIdx, encryptedPayload, tagString);
+            if (!success) {
+                log.warn("OUTBOX PUSH FAILED: Server returned false. Will retry later.");
+                return false;
+            }
             log.info("OUTBOX PUSH SUCCESS: Message for {} sent.", pending.recipient());
 
             // 6. UPDATE LOCAL STATE & PERSIST

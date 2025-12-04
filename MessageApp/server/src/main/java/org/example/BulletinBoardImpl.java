@@ -22,7 +22,7 @@ public class BulletinBoardImpl implements BulletinBoard {
     }
 
     @Override
-    public void add(long idx, byte[] value, String tag) throws RemoteException {
+    public boolean add(long idx, byte[] value, String tag) throws RemoteException {
         int index = computeIndex(idx);
         logger.info("ADD at index {}: tag={}, valueSize={} bytes", index, tag, value.length);
 
@@ -32,6 +32,7 @@ public class BulletinBoardImpl implements BulletinBoard {
             cell.put(tag, value);
             logger.info("ADD SUCCESS: Cell at index {} now has {} entries", index, cell.size());
         }
+        return true;
     }
 
     @Override

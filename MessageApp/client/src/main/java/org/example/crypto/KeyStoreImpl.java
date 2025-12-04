@@ -18,7 +18,7 @@ public class KeyStoreImpl {
     private static final String EXTENSION = ".p12";
     private static final String DB_KEY_ALIAS = "database-encryption-key";
 
-    private static final Path BASE_DIR = Paths.get("MessageApp", "client");
+    private static final Path BASE_DIR = Paths.get("MessageApp", "client", "data");
 
     public boolean makeKeyStore(String username, String password) {
         if (username == null || username.isBlank() || password == null || password.isBlank()) {
