@@ -36,7 +36,6 @@ public class ChatController {
     private Button sendButton;
 
 
-
     private ChatCore chatCore;
     private Stage stage;
     private GUI gui;

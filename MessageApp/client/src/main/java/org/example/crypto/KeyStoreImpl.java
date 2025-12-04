@@ -21,8 +21,7 @@ public class KeyStoreImpl {
     private static final Path BASE_DIR = Paths.get("MessageApp", "client");
 
     public boolean makeKeyStore(String username, String password) {
-        if (username == null || username.isBlank()
-                || password == null || password.isBlank()) {
+        if (username == null || username.isBlank() || password == null || password.isBlank()) {
             return false;
         }
 
@@ -62,8 +61,7 @@ public class KeyStoreImpl {
     }
 
     public boolean loadKeyStore(String username, String password) {
-        if (username == null || username.isBlank()
-                || password == null || password.isBlank()) {
+        if (username == null || username.isBlank() || password == null || password.isBlank()) {
             return false;
         }
         try {
@@ -93,6 +91,7 @@ public class KeyStoreImpl {
 
     /**
      * Retrieves the database encryption key from the keystore.
+     *
      * @return Database encryption key (DEK) or null if not found
      */
     public SecretKey getDatabaseKey() {

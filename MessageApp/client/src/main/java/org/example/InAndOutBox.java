@@ -157,11 +157,7 @@ public class InAndOutBox implements Runnable {
             String nextTag = ChatCrypto.tagToBase64(nextTagBytes);
 
             // 2. Build payload
-            ChatProto.ChatPayload chatPayload = ChatProto.ChatPayload.newBuilder()
-                    .setMessage(pending.messageText())
-                    .setNextIdx(nextIdx)
-                    .setNextTag(ByteString.copyFrom(nextTagBytes))
-                    .build();
+            ChatProto.ChatPayload chatPayload = ChatProto.ChatPayload.newBuilder().setMessage(pending.messageText()).setNextIdx(nextIdx).setNextTag(ByteString.copyFrom(nextTagBytes)).build();
             byte[] payloadBytes = chatPayload.toByteArray();
 
             // 3. Encrypt payload
@@ -170,8 +166,7 @@ public class InAndOutBox implements Runnable {
             // 4. Hash the current tag
             String tagString = Encryption.preimageToTag(chat.sendTag);
 
-            log.info("OUTBOX PUSH: Trying to send to {} at idx {} with tag {}",
-                    pending.recipient(), chat.sendIdx, tagString);
+            log.info("OUTBOX PUSH: Trying to send to {} at idx {} with tag {}", pending.recipient(), chat.sendIdx, tagString);
 
             // 5. SERVER SEND (RMI Call)
             this.bulletinBoard.add(chat.sendIdx, encryptedPayload, tagString);
@@ -204,9 +199,7 @@ public class InAndOutBox implements Runnable {
         }
 
         // Find a chat that can receive messages and is not in a poison-message backoff period
-        Optional<ChatState> chatToProcessOpt = chatCore.getActiveChatsSnapshot().stream()
-                .filter(chat -> chat.canReceive() && !chat.isPoisoned())
-                .findFirst();
+        Optional<ChatState> chatToProcessOpt = chatCore.getActiveChatsSnapshot().stream().filter(chat -> chat.canReceive() && !chat.isPoisoned()).findFirst();
 
         if (chatToProcessOpt.isEmpty()) {
             return false;
@@ -214,8 +207,7 @@ public class InAndOutBox implements Runnable {
         ChatState chat = chatToProcessOpt.get();
 
         try {
-            log.info("INBOX FETCH: Trying to receive for {} at recvIdx={} with tag={}",
-                    chat.recipient, chat.recvIdx, chat.recvTag);
+            log.info("INBOX FETCH: Trying to receive for {} at recvIdx={} with tag={}", chat.recipient, chat.recvIdx, chat.recvTag);
 
             // 1. SERVER REQUEST (RMI Call)
             Pair pair = this.bulletinBoard.get(chat.recvIdx, chat.recvTag);

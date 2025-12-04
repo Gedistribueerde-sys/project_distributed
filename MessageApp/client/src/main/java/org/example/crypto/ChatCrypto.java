@@ -23,11 +23,7 @@ public class ChatCrypto {
 
         SecretKey secretKey = generateChatKey();
 
-        return ChatProto.KeyInfo.newBuilder()
-                .setIdx(initialIdx)
-                .setTag(ByteString.copyFrom(tagBytes))
-                .setKey(ByteString.copyFrom(secretKey.getEncoded()))
-                .build();
+        return ChatProto.KeyInfo.newBuilder().setIdx(initialIdx).setTag(ByteString.copyFrom(tagBytes)).setKey(ByteString.copyFrom(secretKey.getEncoded())).build();
     }
 
     public static SecretKey generateChatKey() throws NoSuchAlgorithmException {
@@ -43,7 +39,7 @@ public class ChatCrypto {
     }
 
     public static long makeNewIdx() {
-        return  secureRandom.nextLong() & Long.MAX_VALUE; // zorg dat het positief is
+        return secureRandom.nextLong() & Long.MAX_VALUE; // zorg dat het positief is
     }
 
 
@@ -52,7 +48,7 @@ public class ChatCrypto {
         secureRandom.nextBytes(tagBytes);
         return tagBytes;
     }
-    
+
     public static String tagToBase64(byte[] tagBytes) {
         return Base64.getEncoder().encodeToString(tagBytes);
     }

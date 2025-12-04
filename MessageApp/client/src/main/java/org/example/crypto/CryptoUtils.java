@@ -18,13 +18,12 @@ public final class CryptoUtils {
     private static final int TAG_LENGTH_BITS = 128;
     private static final SecureRandom RANDOM = new SecureRandom();
 
-    private CryptoUtils() {}
-
     /**
      * Encrypts plaintext and returns IV || ciphertext.
+     *
      * @param plaintext Data to encrypt
-     * @param key Encryption key
-     * @param aad Additional authenticated data (e.g., username:recipient)
+     * @param key       Encryption key
+     * @param aad       Additional authenticated data (e.g., username:recipient)
      * @return IV prepended to ciphertext
      */
     public static byte[] encrypt(byte[] plaintext, SecretKey key, byte[] aad) throws GeneralSecurityException {
@@ -39,17 +38,15 @@ public final class CryptoUtils {
         }
         byte[] ct = cipher.doFinal(plaintext);
 
-        return ByteBuffer.allocate(iv.length + ct.length)
-                .put(iv)
-                .put(ct)
-                .array();
+        return ByteBuffer.allocate(iv.length + ct.length).put(iv).put(ct).array();
     }
 
     /**
      * Decrypts data expecting IV || ciphertext format.
+     *
      * @param encrypted IV prepended to ciphertext
-     * @param key Decryption key
-     * @param aad Additional authenticated data (must match encryption)
+     * @param key       Decryption key
+     * @param aad       Additional authenticated data (must match encryption)
      * @return Decrypted plaintext
      */
     public static byte[] decrypt(byte[] encrypted, SecretKey key, byte[] aad) throws GeneralSecurityException {

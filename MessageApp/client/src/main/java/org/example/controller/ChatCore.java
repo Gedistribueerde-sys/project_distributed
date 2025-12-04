@@ -24,10 +24,7 @@ public class ChatCore {
     private final KeyStoreImpl keyStore = new KeyStoreImpl();
     private String currentUser;
 
-
     private Runnable onMessageUpdateCallback;
-
-
 
     private DatabaseManager databaseManager;
 
@@ -35,7 +32,8 @@ public class ChatCore {
     private final BooleanProperty loggedOut = new SimpleBooleanProperty(false);
     private InAndOutBox inAndOutBox;
 
-    public ChatCore() {}
+    public ChatCore() {
+    }
 
     public BooleanProperty loggedInProperty() {
         return loggedIn;
@@ -137,11 +135,7 @@ public class ChatCore {
                 SecretKey sendKey = state.sendKey() == null ? null : new SecretKeySpec(state.sendKey(), "AES");
                 SecretKey recvKey = state.recvKey() == null ? null : new SecretKeySpec(state.recvKey(), "AES");
 
-                ChatState chat = new ChatState(
-                        state.recipient(),
-                    sendKey, state.sendNextIdx(), state.sendTag(),
-                    recvKey, state.recvNextIdx(), state.recvTag()
-                );
+                ChatState chat = new ChatState(state.recipient(), sendKey, state.sendNextIdx(), state.sendTag(), recvKey, state.recvNextIdx(), state.recvTag());
 
                 // Load messages for this chat
                 List<Message> messages = databaseManager.loadMessages(state.recipient());
@@ -150,8 +144,7 @@ public class ChatCore {
                 }
 
                 activeChats.add(chat);
-                log.info("Restored chat with {}: {} message(s), sendTag={}, recvTag={}",
-                        state.recipient(), messages.size(), state.sendTag(), state.recvTag());
+                log.info("Restored chat with {}: {} message(s), sendTag={}, recvTag={}", state.recipient(), messages.size(), state.sendTag(), state.recvTag());
             }
         } catch (Exception e) {
             log.error("Failed to restore chat states", e);
@@ -171,16 +164,14 @@ public class ChatCore {
     public boolean createChatWithKeys(String recipientName, String sendKeyString, String receiveKeyString) {
         try {
             // Check for duplicate
-            boolean exists = activeChats.stream()
-                    .anyMatch(c -> c.recipient.equals(recipientName));
+            boolean exists = activeChats.stream().anyMatch(c -> c.recipient.equals(recipientName));
             if (exists) {
                 log.error("Chat with {} already exists", recipientName);
                 return false;
             }
 
             // At least one key must be present
-            if ((sendKeyString == null || sendKeyString.isEmpty()) &&
-                (receiveKeyString == null || receiveKeyString.isEmpty())) {
+            if ((sendKeyString == null || sendKeyString.isEmpty()) && (receiveKeyString == null || receiveKeyString.isEmpty())) {
                 log.error("At least one key (send or receive) must be provided");
                 return false;
             }
@@ -219,11 +210,7 @@ public class ChatCore {
                 log.info("Parsed receive key: idx={}, tag={}", recvIdx, recvTag);
             }
 
-            ChatState chat = new ChatState(
-                    recipientName,
-                    sendSecretKey, sendIdx, sendTag,
-                    recvSecretKey, recvIdx, recvTag
-            );
+            ChatState chat = new ChatState(recipientName, sendSecretKey, sendIdx, sendTag, recvSecretKey, recvIdx, recvTag);
 
             activeChats.add(chat);
 
@@ -231,12 +218,10 @@ public class ChatCore {
             if (databaseManager != null) {
                 byte[] sendKeyBytes = sendSecretKey == null ? null : sendSecretKey.getEncoded();
                 byte[] recvKeyBytes = recvSecretKey == null ? null : recvSecretKey.getEncoded();
-                databaseManager.upsertChatState(recipientName, sendKeyBytes, recvKeyBytes, sendIdx, recvIdx,
-                    sendTag, recvTag);
+                databaseManager.upsertChatState(recipientName, sendKeyBytes, recvKeyBytes, sendIdx, recvIdx, sendTag, recvTag);
             }
 
-            log.info("Created chat with {}: canSend={}, canReceive={}",
-                    recipientName, chat.canSend(), chat.canReceive());
+            log.info("Created chat with {}: canSend={}, canReceive={}", recipientName, chat.canSend(), chat.canReceive());
             return true;
 
         } catch (Exception e) {
@@ -260,6 +245,7 @@ public class ChatCore {
         activeChats.forEach(chat -> names.add(chat.toString()));
         return names;
     }
+
     // sendmessage is now mainly in the inandoutbox
     public void sendMessage(int chatIndex, String message) {
         // 0 = "➕ New Chat (BUMP)", real chats start at 1
@@ -281,10 +267,10 @@ public class ChatCore {
             // this is for the ui
             chat.addSentMessage(message, currentUser);
 
-           // save it in the db as unsent
+            // save it in the db as unsent
             if (databaseManager != null) {
 
-                databaseManager.addMessage(chat.recipient, message,  true,false);
+                databaseManager.addMessage(chat.recipient, message, true, false);
             }
 
             log.info("Bericht lokaal gebufferd voor verzending naar {}", chat.recipient);
@@ -320,9 +306,7 @@ public class ChatCore {
 
     // get the chatstate by recipient name
     public Optional<ChatState> getChatStateByRecipient(String recipient) {
-        return activeChats.stream()
-                .filter(c -> c.recipient.equals(recipient))
-                .findFirst();
+        return activeChats.stream().filter(c -> c.recipient.equals(recipient)).findFirst();
     }
 
 
@@ -338,6 +322,7 @@ public class ChatCore {
     public void setOnMessageUpdateCallback(Runnable callback) {
         this.onMessageUpdateCallback = callback;
     }
+
     // Notify GUI of message update
     public void notifyMessageUpdate() {
         if (onMessageUpdateCallback != null) {

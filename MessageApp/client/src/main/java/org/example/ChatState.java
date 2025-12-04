@@ -27,10 +27,7 @@ public class ChatState {
     // Backoff timestamp for handling poison messages.
     public long poisonedBackoffUntil = 0;
 
-    public ChatState(String recipient,
-                     SecretKey sendKey, long sendIdx, String sendTag,
-                     SecretKey recvKey, long recvIdx, String recvTag)
-    {
+    public ChatState(String recipient, SecretKey sendKey, long sendIdx, String sendTag, SecretKey recvKey, long recvIdx, String recvTag) {
         this.recipient = recipient;
 
         this.sendKey = sendKey;
@@ -89,19 +86,13 @@ public class ChatState {
         StringBuilder sb = new StringBuilder();
 
         if (canSend()) {
-            sb.append("OUT (you → ").append(recipient).append(")\n")
-              .append(" key = ").append(ChatCrypto.keyToBase64(sendKey)).append("\n")
-              .append(" idx = ").append(sendIdx).append("\n")
-              .append(" tag = ").append(sendTag).append("\n\n");
+            sb.append("OUT (you → ").append(recipient).append(")\n").append(" key = ").append(ChatCrypto.keyToBase64(sendKey)).append("\n").append(" idx = ").append(sendIdx).append("\n").append(" tag = ").append(sendTag).append("\n\n");
         } else {
             sb.append("OUT: Not available (receive-only chat)\n\n");
         }
 
         if (canReceive()) {
-            sb.append("IN (").append(recipient).append(" → you)\n")
-              .append(" key = ").append(ChatCrypto.keyToBase64(recvKey)).append("\n")
-              .append(" idx = ").append(recvIdx).append("\n")
-              .append(" tag = ").append(recvTag);
+            sb.append("IN (").append(recipient).append(" → you)\n").append(" key = ").append(ChatCrypto.keyToBase64(recvKey)).append("\n").append(" idx = ").append(recvIdx).append("\n").append(" tag = ").append(recvTag);
         } else {
             sb.append("IN: Not available (send-only chat)");
         }

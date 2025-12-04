@@ -66,12 +66,17 @@
     -fx-max-width: 420px;
     -fx-wrap-text: true;
     -fx-text-fill: -fx-text-base-color;
-    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 2, 0.2, 0, 1);
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.06), 2, 0.2, 0, 1);
 }
 
 /* hbox alignment helpers */
-.message-cell-hbox.left { -fx-alignment: center-left; }
-.message-cell-hbox.right { -fx-alignment: center-right; }
+.message-cell-hbox.left {
+    -fx-alignment: center-left;
+}
+
+.message-cell-hbox.right {
+    -fx-alignment: center-right;
+}
 
 /* new chat dialog styles */
 .new-chat-dialog {

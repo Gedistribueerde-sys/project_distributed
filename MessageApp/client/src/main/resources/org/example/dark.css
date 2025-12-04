@@ -13,17 +13,25 @@
     -fx-background-radius: 20;
     -fx-border-radius: 20;
     -fx-padding: 10 20;
-    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 10, 0, 0, 3);
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.3), 10, 0, 0, 3);
 }
 
 .button:hover {
     -fx-background-color: #ff79c6; /* Pink on hover */
-    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 15, 0, 0, 4);
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.4), 15, 0, 0, 4);
 }
 
-#sendButton { -fx-background-color: #50fa7b; }
-#logoutButton { -fx-background-color: #ff5555; }
-#themeToggleButton { -fx-background-color: #ffb86c; }
+#sendButton {
+    -fx-background-color: #50fa7b;
+}
+
+#logoutButton {
+    -fx-background-color: #ff5555;
+}
+
+#themeToggleButton {
+    -fx-background-color: #ffb86c;
+}
 
 
 /* --- Text Fields & Password Fields --- */
@@ -71,6 +79,7 @@
     -fx-background-color: #282a36;
     -fx-background-radius: 10;
 }
+
 /* --- List Views --- */
 .list-view {
     -fx-background-color: #44475a;
@@ -98,10 +107,17 @@
     -fx-background-color: #6272a4;
     -fx-text-fill: #f8f8f2; /* Ensure text is visible on hover */
 }
-.list-cell:filled:selected { -fx-background-color: #9969d6; -fx-text-fill: #f8f8f2; }
+
+.list-cell:filled:selected {
+    -fx-background-color: #9969d6;
+    -fx-text-fill: #f8f8f2;
+}
 
 /* --- Other controls --- */
-.label { -fx-text-fill: #f8f8f2; -fx-font-size: 14px; }
+.label {
+    -fx-text-fill: #f8f8f2;
+    -fx-font-size: 14px;
+}
 
 .split-pane {
     -fx-background-color: #282a36;
@@ -129,7 +145,13 @@
 }
 
 /* --- Chat Bubbles --- */
-.message-bubble { -fx-padding: 10px 15px; -fx-background-radius: 15px; -fx-max-width: 70%; -fx-wrap-text: true; }
+.message-bubble {
+    -fx-padding: 10px 15px;
+    -fx-background-radius: 15px;
+    -fx-max-width: 70%;
+    -fx-wrap-text: true;
+}
+
 .list-cell .message-bubble.incoming {
     -fx-background-color: #999999; /* Pure white background */
     -fx-text-fill: #ffffff; /* Very dark text for high contrast */
