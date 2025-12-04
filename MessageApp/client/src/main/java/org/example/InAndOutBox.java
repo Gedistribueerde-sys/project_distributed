@@ -2,7 +2,7 @@ package org.example;
 
 import com.google.protobuf.ByteString;
 import org.example.controller.ChatCore;
-import org.example.cypto.ChatCrypto;
+import org.example.crypto.ChatCrypto;
 import org.example.proto.ChatProto;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

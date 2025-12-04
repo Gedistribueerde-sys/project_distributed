@@ -1,4 +1,4 @@
-package org.example.cypto;
+package org.example.crypto;
 
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;

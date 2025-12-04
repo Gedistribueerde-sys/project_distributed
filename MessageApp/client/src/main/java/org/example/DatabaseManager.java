@@ -1,7 +1,7 @@
 package org.example;
 
 import org.example.GUI.Message;
-import org.example.cypto.CryptoUtils;
+import org.example.crypto.CryptoUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
