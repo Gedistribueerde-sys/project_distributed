@@ -4,21 +4,21 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.rmi.RemoteException;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap; // Thread-safe for RMI
+import java.util.List;
+import java.util.Map;
 
 public class BulletinBoardImpl implements BulletinBoard {
     private static final Logger logger = LoggerFactory.getLogger(BulletinBoardImpl.class);
     private final int BOARD_SIZE = 1024;
+    private final ServerDatabaseManager dbManager;
 
-    // Map: Key = Tag (String/Base64), Value = Encrypted Message (byte[])
+    // A list of maps, where the list index corresponds to the cell index.
     private final List<Map<String, byte[]>> board;
 
-    public BulletinBoardImpl() {
-        board = new ArrayList<>(BOARD_SIZE);
-        for (int i = 0; i < BOARD_SIZE; i++) {
-            board.add(new ConcurrentHashMap<>());
-        }
+    public BulletinBoardImpl(ServerDatabaseManager dbManager) {
+        this.dbManager = dbManager;
+        // Load the state from the database on startup
+        this.board = dbManager.loadAllMessages(BOARD_SIZE);
     }
 
     @Override
@@ -26,13 +26,23 @@ public class BulletinBoardImpl implements BulletinBoard {
         int index = computeIndex(idx);
         logger.info("ADD at index {}: tag={}, valueSize={} bytes", index, tag, value.length);
 
-        // O(1) - Instant access
-        Map<String, byte[]> cell = board.get(index);
-        synchronized (cell) {
-            cell.put(tag, value);
-            logger.info("ADD SUCCESS: Cell at index {} now has {} entries", index, cell.size());
+        try {
+            // 1. Persist to database first (Write-Through)
+            dbManager.saveMessage(index, tag, value);
+
+            // 2. Then update in-memory cache
+            Map<String, byte[]> cell = board.get(index);
+            synchronized (cell) {
+                cell.put(tag, value);
+                logger.info("ADD SUCCESS: Cell at index {} now has {} entries", index, cell.size());
+            }
+            return true;
+        } catch (Exception e) {
+            logger.error("ADD FAILED: Could not persist message with tag {}", tag, e);
+            // We return false to indicate the add operation failed.
+            // The client is expected to retry.
+            return false;
         }
-        return true;
     }
 
     @Override
@@ -53,7 +63,15 @@ public class BulletinBoardImpl implements BulletinBoard {
         }
 
         if (value != null) {
-            logger.info("GET SUCCESS: Found and removed message with tag {}", tag);
+            logger.info("GET SUCCESS: Found and removed message with tag {} from cache", tag);
+            try {
+                // Also remove from the database
+                dbManager.deleteMessage(tag);
+                logger.info("GET SUCCESS: Removed message with tag {} from database", tag);
+            } catch (Exception e) {
+                // Log an error, but don't fail the operation from the client's perspective
+                logger.error("GET FAILED: Could not remove message with tag {} from database. In-memory cache and DB are now inconsistent.", tag, e);
+            }
             return new Pair(value, tag);
         }
 

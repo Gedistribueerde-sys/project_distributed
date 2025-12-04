@@ -11,9 +11,13 @@ import java.util.concurrent.CountDownLatch;
 public class Server {
     static void main(String[] args) throws Exception {
         Logger log = LoggerFactory.getLogger(Server.class);
-        BulletinBoardImpl bulletinBoard = new BulletinBoardImpl();
-        BulletinBoard stub =
-                (BulletinBoard) UnicastRemoteObject.exportObject(bulletinBoard, 0);
+
+        // Database setup
+        ServerDatabaseManager dbManager = new ServerDatabaseManager("server_data.db");
+        dbManager.initializeDatabase();
+
+        BulletinBoardImpl bulletinBoard = new BulletinBoardImpl(dbManager);
+        BulletinBoard stub = (BulletinBoard) UnicastRemoteObject.exportObject(bulletinBoard, 0);
 
         Registry registry = LocateRegistry.createRegistry(1099);
         registry.rebind("BulletinBoard", stub);
