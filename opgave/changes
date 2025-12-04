@@ -1,9 +1,0 @@
-- make sure the client app doesn't crash when server is offline for a while (buffering and queuing to send messages later?)
-- make sure before sending to check receiving messages
-- refactor packages
-
---- Advanced ---
-
-- supporting recoverability of corrupted states
-- the N (size of the board) should be able to grow: Increasing scalability -> partitioning the BB in chunks
-- Tackling Denial-of-Service attacks
