@@ -143,7 +143,7 @@ public class InAndOutBox implements Runnable {
         DatabaseManager.PendingMessage pending = pendingMessageOpt.get();
 
         // Get chat state
-        Optional<ChatState> chatOptional = chatCore.getChatStateByRecipient(pending.recipient());
+        Optional<ChatState> chatOptional = chatCore.getChatStateByRecipientUuid(pending.recipientUuid());
         if (chatOptional.isEmpty()) {
             log.error("Chat state not found for pending message to {}", pending.recipient());
             return false;
@@ -240,7 +240,7 @@ public class InAndOutBox implements Runnable {
 
             // 4. PERSISTENCE
             byte[] newRecvKeyBytes = chat.recvKey.getEncoded();
-            databaseManager.addReceivedMessageAndUpdateState(chat.recipient, receivedMessage, newRecvKeyBytes, chat.recvIdx, chat.recvTag);
+            databaseManager.addReceivedMessageAndUpdateState(chat.recipient, chat.getRecipientUuid(), receivedMessage, newRecvKeyBytes, chat.recvIdx, chat.recvTag);
 
             chatCore.notifyMessageUpdate();
             return true; // Work was done

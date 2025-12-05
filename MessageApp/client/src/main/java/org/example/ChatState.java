@@ -10,6 +10,7 @@ import java.util.List;
 // This class holds the state of a chat with a specific recipient
 public class ChatState {
     public final String recipient;
+    public final String recipientUuid;
 
     // Sending capability (nullable if receive-only)
     public SecretKey sendKey;
@@ -27,8 +28,9 @@ public class ChatState {
     // Backoff timestamp for handling poison messages.
     public long poisonedBackoffUntil = 0;
 
-    public ChatState(String recipient, SecretKey sendKey, long sendIdx, String sendTag, SecretKey recvKey, long recvIdx, String recvTag) {
+    public ChatState(String recipient, String recipientUuid, SecretKey sendKey, long sendIdx, String sendTag, SecretKey recvKey, long recvIdx, String recvTag) {
         this.recipient = recipient;
+        this.recipientUuid = recipientUuid;
 
         this.sendKey = sendKey;
         this.sendIdx = sendIdx;
@@ -40,6 +42,11 @@ public class ChatState {
 
         this.messages = new ArrayList<>();
     }
+
+    public String getRecipientUuid() {
+        return recipientUuid;
+    }
+
 
     public boolean canSend() {
         return sendKey != null;
@@ -78,7 +85,7 @@ public class ChatState {
         } else if (canReceive()) {
             status = " (←)"; // Receive only
         }
-        return "Chat with " + recipient + status;
+        return "Chat with " + recipient + " (" + recipientUuid + ")" + status;
     }
 
     // This is for debug purposes only

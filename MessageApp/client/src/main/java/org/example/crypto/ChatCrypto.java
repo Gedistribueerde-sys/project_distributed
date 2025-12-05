@@ -15,7 +15,7 @@ public class ChatCrypto {
     private static final Logger log = LoggerFactory.getLogger(ChatCrypto.class);
     static final private SecureRandom secureRandom = new SecureRandom();
 
-    public static ChatProto.KeyInfo generateBumpKeyInfo() throws Exception {
+    public static ChatProto.KeyInfo generateBumpKeyInfo(String senderName, String senderUuid) throws Exception {
         long initialIdx = makeNewIdx();
         log.info("Generated Chat ID: {}", initialIdx);
 
@@ -23,7 +23,13 @@ public class ChatCrypto {
 
         SecretKey secretKey = generateChatKey();
 
-        return ChatProto.KeyInfo.newBuilder().setIdx(initialIdx).setTag(ByteString.copyFrom(tagBytes)).setKey(ByteString.copyFrom(secretKey.getEncoded())).build();
+        return ChatProto.KeyInfo.newBuilder()
+                .setIdx(initialIdx)
+                .setTag(ByteString.copyFrom(tagBytes))
+                .setKey(ByteString.copyFrom(secretKey.getEncoded()))
+                .setSenderName(senderName)
+                .setSenderUuid(senderUuid)
+                .build();
     }
 
     public static SecretKey generateChatKey() throws NoSuchAlgorithmException {

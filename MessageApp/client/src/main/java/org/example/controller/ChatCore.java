@@ -23,6 +23,7 @@ public class ChatCore {
     private final List<ChatState> activeChats = new ArrayList<>();
     private final KeyStoreImpl keyStore = new KeyStoreImpl();
     private String currentUser;
+    private String currentUserUuid;
 
     private Runnable onMessageUpdateCallback;
 
@@ -52,7 +53,10 @@ public class ChatCore {
             SecretKey dbKey = keyStore.getDatabaseKey();
             if (dbKey != null) {
                 databaseManager = new DatabaseManager(username, dbKey);
-                log.info("Database initialized for new user: {}", username);
+                // Generate and save user UUID
+                String userUuid = java.util.UUID.randomUUID().toString();
+                databaseManager.saveUserUuid(userUuid);
+                log.info("Database initialized and UUID generated for new user: {}", username);
             }
         } else {
             log.info("Failed to create keystore for user: {}", username);
@@ -74,6 +78,11 @@ public class ChatCore {
 
             // Initialize database manager
             databaseManager = new DatabaseManager(username, dbKey);
+            currentUserUuid = databaseManager.getUserUuid();
+            if (currentUserUuid == null) {
+                log.error("Failed to retrieve user UUID for user {}", username);
+                return false;
+            }
 
             // Restore chat states from database
             restoreChatStates();
@@ -105,6 +114,10 @@ public class ChatCore {
         return currentUser;
     }
 
+    public String getCurrentUserUuid() {
+        return currentUserUuid;
+    }
+
     public void logout() {
 
         if (inAndOutBox != null) {
@@ -112,6 +125,7 @@ public class ChatCore {
         }
         log.info("User {} logged out.", currentUser);
         currentUser = null;
+        currentUserUuid = null;
         activeChats.clear();
         databaseManager = null;
         loggedIn.set(false);
@@ -135,10 +149,10 @@ public class ChatCore {
                 SecretKey sendKey = state.sendKey() == null ? null : new SecretKeySpec(state.sendKey(), "AES");
                 SecretKey recvKey = state.recvKey() == null ? null : new SecretKeySpec(state.recvKey(), "AES");
 
-                ChatState chat = new ChatState(state.recipient(), sendKey, state.sendNextIdx(), state.sendTag(), recvKey, state.recvNextIdx(), state.recvTag());
+                ChatState chat = new ChatState(state.recipient(), state.recipientUuid(), sendKey, state.sendNextIdx(), state.sendTag(), recvKey, state.recvNextIdx(), state.recvTag());
 
                 // Load messages for this chat
-                List<Message> messages = databaseManager.loadMessages(state.recipient());
+                List<Message> messages = databaseManager.loadMessages(state.recipient(), state.recipientUuid());
                 for (Message msg : messages) {
                     chat.getMessages().add(msg);
                 }
@@ -154,21 +168,17 @@ public class ChatCore {
     // Generate a send key encoded as protobuf Base64 string
     // This key can be given to another user so they can receive messages
     public String generateSendKeyInfo() throws Exception {
-        ChatProto.KeyInfo keyInfo = ChatCrypto.generateBumpKeyInfo();
+        ChatProto.KeyInfo keyInfo = ChatCrypto.generateBumpKeyInfo(currentUser, currentUserUuid);
 
         byte[] serialized = keyInfo.toByteArray();
         return Base64.getEncoder().encodeToString(serialized);
     }
 
     // Create a new chat with optional send and receive keys
-    public boolean createChatWithKeys(String recipientName, String sendKeyString, String receiveKeyString) {
+    public boolean createChatWithKeys(String sendKeyString, String receiveKeyString) {
         try {
-            // Check for duplicate
-            boolean exists = activeChats.stream().anyMatch(c -> c.recipient.equals(recipientName));
-            if (exists) {
-                log.error("Chat with {} already exists", recipientName);
-                return false;
-            }
+            String recipientName = null;
+            String recipientUuid = null;
 
             // At least one key must be present
             if ((sendKeyString == null || sendKeyString.isEmpty()) && (receiveKeyString == null || receiveKeyString.isEmpty())) {
@@ -189,6 +199,9 @@ public class ChatCore {
                 byte[] decoded = Base64.getDecoder().decode(sendKeyString.trim());
                 ChatProto.KeyInfo keyInfo = ChatProto.KeyInfo.parseFrom(decoded);
 
+                recipientName = keyInfo.getSenderName();
+                recipientUuid = keyInfo.getSenderUuid();
+
                 byte[] keyBytes = keyInfo.getKey().toByteArray();
                 sendSecretKey = new SecretKeySpec(keyBytes, 0, keyBytes.length, "AES");
                 sendIdx = keyInfo.getIdx();
@@ -202,6 +215,11 @@ public class ChatCore {
                 byte[] decoded = Base64.getDecoder().decode(receiveKeyString.trim());
                 ChatProto.KeyInfo keyInfo = ChatProto.KeyInfo.parseFrom(decoded);
 
+                if (recipientName == null) {
+                    recipientName = keyInfo.getSenderName();
+                    recipientUuid = keyInfo.getSenderUuid();
+                }
+
                 byte[] keyBytes = keyInfo.getKey().toByteArray();
                 recvSecretKey = new SecretKeySpec(keyBytes, 0, keyBytes.length, "AES");
                 recvIdx = keyInfo.getIdx();
@@ -210,7 +228,21 @@ public class ChatCore {
                 log.info("Parsed receive key: idx={}, tag={}", recvIdx, recvTag);
             }
 
-            ChatState chat = new ChatState(recipientName, sendSecretKey, sendIdx, sendTag, recvSecretKey, recvIdx, recvTag);
+            if (recipientName == null) {
+                log.error("Could not extract recipient info from keys");
+                return false;
+            }
+
+            // Check for duplicate
+            String finalRecipientUuid = recipientUuid;
+            boolean exists = activeChats.stream().anyMatch(c -> c.recipientUuid.equals(finalRecipientUuid));
+            if (exists) {
+                log.error("Chat with {} already exists", recipientName);
+                return false;
+            }
+
+
+            ChatState chat = new ChatState(recipientName, recipientUuid, sendSecretKey, sendIdx, sendTag, recvSecretKey, recvIdx, recvTag);
 
             activeChats.add(chat);
 
@@ -218,7 +250,7 @@ public class ChatCore {
             if (databaseManager != null) {
                 byte[] sendKeyBytes = sendSecretKey == null ? null : sendSecretKey.getEncoded();
                 byte[] recvKeyBytes = recvSecretKey == null ? null : recvSecretKey.getEncoded();
-                databaseManager.upsertChatState(recipientName, sendKeyBytes, recvKeyBytes, sendIdx, recvIdx, sendTag, recvTag);
+                databaseManager.upsertChatState(recipientName, recipientUuid, sendKeyBytes, recvKeyBytes, sendIdx, recvIdx, sendTag, recvTag);
             }
 
             log.info("Created chat with {}: canSend={}, canReceive={}", recipientName, chat.canSend(), chat.canReceive());
@@ -270,7 +302,7 @@ public class ChatCore {
             // save it in the db as unsent
             if (databaseManager != null) {
 
-                databaseManager.addMessage(chat.recipient, message, true, false);
+                databaseManager.addMessage(chat.recipient, chat.getRecipientUuid(), message, true, false);
             }
 
             log.info("Bericht lokaal gebufferd voor verzending naar {}", chat.recipient);
@@ -288,7 +320,8 @@ public class ChatCore {
         if (idx < 0 || idx >= activeChats.size()) {
             return java.util.Collections.emptyList();
         }
-        return activeChats.get(idx).getMessages();
+        ChatState chat = activeChats.get(idx);
+        return databaseManager.loadMessages(chat.recipient, chat.recipientUuid);
     }
 
     public boolean canSendToChat(int listIndex) {
@@ -305,8 +338,8 @@ public class ChatCore {
 
 
     // get the chatstate by recipient name
-    public Optional<ChatState> getChatStateByRecipient(String recipient) {
-        return activeChats.stream().filter(c -> c.recipient.equals(recipient)).findFirst();
+    public Optional<ChatState> getChatStateByRecipientUuid(String recipientUuid) {
+        return activeChats.stream().filter(c -> c.recipientUuid.equals(recipientUuid)).findFirst();
     }
 
 

@@ -19,14 +19,6 @@
         <Label text="Create New Chat" styleClass="title-label"/>
         <Separator/>
 
-        <!-- Name Field -->
-        <VBox spacing="6">
-            <Label text="Chat Partner Name"/>
-            <TextField fx:id="nameField" promptText="Enter the name of the person you're chatting with"/>
-        </VBox>
-
-        <Separator/>
-
         <!-- Send Key Section -->
         <VBox spacing="6">
             <Label text="Generate Send Key" styleClass="title-label"/>
@@ -53,7 +45,6 @@
 
         <Separator/>
 
-        <Label fx:id="statusLabel" style="-fx-font-weight: bold;"/>
         <HBox spacing="12" alignment="CENTER">
             <Button fx:id="createChatButton" text="Create Chat" onAction="#handleCreateChat" 
                     maxWidth="Infinity" HBox.hgrow="ALWAYS"/>
