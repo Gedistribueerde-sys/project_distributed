@@ -12,17 +12,20 @@ public class Server {
     static void main(String[] args) throws Exception {
         Logger log = LoggerFactory.getLogger(Server.class);
 
-        // Database setup
-        ServerDatabaseManager dbManager = new ServerDatabaseManager("server_data.db");
+        // Determine port, then set up database with a port-specific name
+        int port = args.length > 0 ? Integer.parseInt(args[0]) : 1099;
+        String dbPath = "server_" + port + ".db";
+
+        ServerDatabaseManager dbManager = new ServerDatabaseManager(dbPath);
         dbManager.initializeDatabase();
 
         BulletinBoardImpl bulletinBoard = new BulletinBoardImpl(dbManager);
         BulletinBoard stub = (BulletinBoard) UnicastRemoteObject.exportObject(bulletinBoard, 0);
-        int port = args.length > 0 ? Integer.parseInt(args[0]) : 1099;
+
         Registry registry = LocateRegistry.createRegistry(port);
         registry.rebind("BulletinBoard", stub);
 
-        log.info("Server running on port : {}", port);
+        log.info("Server running on port: {}", port);
         CountDownLatch latch = new CountDownLatch(1);
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -38,5 +41,4 @@ public class Server {
         log.info("Server running. Press CTRL+C to stop.");
         latch.await();
     }
-
 }

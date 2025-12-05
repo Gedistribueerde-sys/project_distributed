@@ -10,10 +10,11 @@ import java.util.Map;
 public class BulletinBoardImpl implements BulletinBoard {
     private static final Logger logger = LoggerFactory.getLogger(BulletinBoardImpl.class);
     private final int BOARD_SIZE = 1024;
-    private final ServerDatabaseManager dbManager;
+
+    private final transient ServerDatabaseManager dbManager; // transient to avoid serialization issues, for RMI
 
     // A list of maps, where the list index corresponds to the cell index.
-    private final List<Map<String, byte[]>> board;
+    private final transient List<Map<String, byte[]>> board;
 
     public BulletinBoardImpl(ServerDatabaseManager dbManager) {
         this.dbManager = dbManager;
@@ -24,19 +25,18 @@ public class BulletinBoardImpl implements BulletinBoard {
     @Override
     public boolean add(long idx, byte[] value, String tag) throws RemoteException {
         int index = computeIndex(idx);
-        // get the cell where we want to write
-
         logger.info("ADD at index {}: tag={}, valueSize={} bytes", index, tag, value.length);
         Map<String, byte[]> cell = board.get(index);
-        // Check for duplicate tag
+        
         synchronized (cell) {
             if (cell.containsKey(tag)) {
-                logger.warn("ADD FAILED: Duplicate tag {} in cell at index {}", tag, index);
-                return false; // Duplicate tag, reject the add
+                logger.warn("ADD FAILED: Collision tag {} in cell at index {}.", tag, index);
+                return false; // Wait till message gets cleared
             }
         }
+
         try {
-            // 1. Persist to database first (Write-Through)
+            // 1. Persist to database first
             dbManager.saveMessage(index, tag, value);
 
             // 2. Then update in-memory cache

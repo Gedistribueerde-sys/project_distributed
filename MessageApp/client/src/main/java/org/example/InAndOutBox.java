@@ -11,6 +11,8 @@ import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
 
@@ -21,15 +23,16 @@ import java.util.Random;
 public class InAndOutBox implements Runnable {
     private static final Logger log = LoggerFactory.getLogger(InAndOutBox.class);
     private final ChatCore chatCore;
-    private BulletinBoard bulletinBoard = null;
     private final DatabaseManager databaseManager;
     private volatile boolean running = false;
     private Thread thread;
     private final Random random = new Random();
 
-    private static final int[] RMI_PORTS = {1099};
+    private static final int[] RMI_PORTS = {1099, 1100};
     private static final int NUM_SERVERS = RMI_PORTS.length;
-    private String connectedHostPort = null; // Houdt bij met welke host:poort we verbonden zijn
+
+    // Cache for RMI stubs
+    private final Map<String, BulletinBoard> bulletinBoardStubs = new HashMap<>();
 
     public InAndOutBox(ChatCore chatCore, DatabaseManager databaseManager) {
         this.chatCore = chatCore;
@@ -53,6 +56,7 @@ public class InAndOutBox implements Runnable {
      */
     public void stop() {
         running = false;
+        disconnect();
         if (thread != null) {
             thread.interrupt();
         }
@@ -72,6 +76,11 @@ public class InAndOutBox implements Runnable {
             log.warn("Interrupted while waiting for message processor to stop.", e);
             Thread.currentThread().interrupt();
         }
+    }
+
+    private void disconnect() {
+        bulletinBoardStubs.clear();
+        log.info("All RMI connections disconnected.");
     }
 
     @Override
@@ -106,36 +115,26 @@ public class InAndOutBox implements Runnable {
         }
     }
 
-    // Binnen de InAndOutBox klasse
-    private boolean ensureConnected(long requiredIndex) {
+    private Optional<BulletinBoard> ensureConnected(long requiredIndex) {
         int targetPort = getPortForIndex(requiredIndex);
-        String targetHost = "localhost"; // Of de daadwerkelijke hostnaam
-
+        String targetHost = "localhost";
         String targetHostPort = targetHost + ":" + targetPort;
 
-        // break the connection if we are connected to the wrong server
-        if (this.bulletinBoard != null && !targetHostPort.equals(this.connectedHostPort)) {
-            log.info("DISCONNECT: breaking connection with {} needed server is : {} ", this.connectedHostPort, targetHostPort);
-            this.bulletinBoard = null;
-            this.connectedHostPort = null;
+        // If we have a cached stub, return it.
+        if (bulletinBoardStubs.containsKey(targetHostPort)) {
+            return Optional.of(bulletinBoardStubs.get(targetHostPort));
         }
 
-        if (this.bulletinBoard != null) {
-            return true; //already connected to the board
-        }
-
+        // If not connected, establish connection
         try {
-            // use the locate registry to get the remote bulletin board
             Registry registry = LocateRegistry.getRegistry(targetHost, targetPort);
-            this.bulletinBoard = (BulletinBoard) registry.lookup("BulletinBoard");
-            this.connectedHostPort = targetHostPort;
-            log.info("RMI CONNECTION SUCCESS: Bulltinboard found and connected on : {}.", targetHostPort);
-            return true;
+            BulletinBoard bulletinBoard = (BulletinBoard) registry.lookup("BulletinBoard");
+            bulletinBoardStubs.put(targetHostPort, bulletinBoard);
+            log.info("RMI CONNECTION SUCCESS: BulletinBoard found and connected on: {}.", targetHostPort);
+            return Optional.of(bulletinBoard);
         } catch (RemoteException | NotBoundException e) {
-            log.warn("RMI CONNECTION ERROR: BulletinBoard on {} not accesible or found , trying again .", targetHostPort);
-            this.bulletinBoard = null;
-            this.connectedHostPort = null;
-            return false;
+            log.warn("RMI CONNECTION ERROR: BulletinBoard on {} not accessible or found, trying again later.", targetHostPort);
+            return Optional.empty();
         }
     }
 
@@ -144,14 +143,12 @@ public class InAndOutBox implements Runnable {
             return false;
         }
 
-        // Retrieve the first pending message
         Optional<DatabaseManager.PendingMessage> pendingMessageOpt = databaseManager.getPendingOutboxMessages().stream().findFirst();
         if (pendingMessageOpt.isEmpty()) {
             return false;
         }
         DatabaseManager.PendingMessage pending = pendingMessageOpt.get();
 
-        // Get chat state
         Optional<ChatState> chatOptional = chatCore.getChatStateByRecipientUuid(pending.recipientUuid());
         if (chatOptional.isEmpty()) {
             log.error("Chat state not found for pending message to {}", pending.recipient());
@@ -159,38 +156,33 @@ public class InAndOutBox implements Runnable {
         }
         ChatState chat = chatOptional.get();
 
-        if (!ensureConnected(chat.sendIdx)) {
-           // if the connection could not be established, return false to retry later
+        Optional<BulletinBoard> bulletinBoardOpt = ensureConnected(chat.sendIdx);
+        if (bulletinBoardOpt.isEmpty()) {
             return false;
         }
+        BulletinBoard bulletinBoard = bulletinBoardOpt.get();
+
         try {
-            // 1. Generate new state (idx', tag')
             long nextIdx = ChatCrypto.makeNewIdx();
             byte[] nextTagBytes = ChatCrypto.makeNewTag();
             String nextTag = ChatCrypto.tagToBase64(nextTagBytes);
 
-            // 2. Build payload
             ChatProto.ChatPayload chatPayload = ChatProto.ChatPayload.newBuilder().setMessage(pending.messageText()).setNextIdx(nextIdx).setNextTag(ByteString.copyFrom(nextTagBytes)).build();
             byte[] payloadBytes = chatPayload.toByteArray();
 
-            // 3. Encrypt payload
             byte[] encryptedPayload = ChatCrypto.encryptPayloadBytes(payloadBytes, chat.sendKey);
 
-            // 4. Hash the current tag
             String tagString = Encryption.preimageToTag(chat.sendTag);
 
             log.info("OUTBOX PUSH: Trying to send to {} at idx {} with tag {}", pending.recipient(), chat.sendIdx, tagString);
 
-            // 5. SERVER SEND (RMI Call)
-            boolean success = this.bulletinBoard.add(chat.sendIdx, encryptedPayload, tagString);
+            boolean success = bulletinBoard.add(chat.sendIdx, encryptedPayload, tagString);
             if (!success) {
                 log.warn("OUTBOX PUSH FAILED: Server returned false. Will retry later.");
                 return false;
             }
             log.info("OUTBOX PUSH SUCCESS: Message for {} sent.", pending.recipient());
 
-            // 6. UPDATE LOCAL STATE & PERSIST
-            // This part should be transactional if possible
             chat.sendIdx = nextIdx;
             chat.sendTag = nextTag;
             chat.sendKey = ChatCrypto.makeNewSecretKey(chat.sendKey);
@@ -198,13 +190,12 @@ public class InAndOutBox implements Runnable {
             byte[] newSendKeyBytes = chat.sendKey.getEncoded();
             databaseManager.markMessageAsSentAndUpdateState(pending.id(), chat.recipient, newSendKeyBytes, chat.sendIdx, chat.sendTag);
 
-            return true; // Work was done
+            return true;
 
         } catch (RemoteException e) {
-            log.warn("RMI ERROR during outbox push. Server may be offline. Will retry later.");
-            this.bulletinBoard = null; // Reset connection
-            this.connectedHostPort = null;
-            return false; // No work was done from a final point of view
+            log.warn("RMI ERROR during outbox push. Server may be offline. Will retry later.", e);
+            bulletinBoardStubs.clear(); // Clear all stubs on error
+            return false;
         } catch (Exception e) {
             log.error("Failed to process outbox message for {}", pending.recipient(), e);
             return false;
@@ -216,7 +207,6 @@ public class InAndOutBox implements Runnable {
             return false;
         }
 
-        // Find a chat that can receive messages and is not in a poison-message backoff period
         Optional<ChatState> chatToProcessOpt = chatCore.getActiveChatsSnapshot().stream().filter(chat -> chat.canReceive() && !chat.isPoisoned()).findFirst();
 
         if (chatToProcessOpt.isEmpty()) {
@@ -224,27 +214,26 @@ public class InAndOutBox implements Runnable {
         }
         ChatState chat = chatToProcessOpt.get();
 
-        if (!ensureConnected(chat.recvIdx)) {
+        Optional<BulletinBoard> bulletinBoardOpt = ensureConnected(chat.recvIdx);
+        if (bulletinBoardOpt.isEmpty()) {
             return false;
         }
+        BulletinBoard bulletinBoard = bulletinBoardOpt.get();
+
         try {
             log.info("INBOX FETCH: Trying to receive for {} at recvIdx={} with tag={}", chat.recipient, chat.recvIdx, chat.recvTag);
 
-            // 1. SERVER REQUEST (RMI Call)
-            Pair pair = this.bulletinBoard.get(chat.recvIdx, chat.recvTag);
+            Pair pair = bulletinBoard.get(chat.recvIdx, chat.recvTag);
 
             if (pair == null) {
-                // No message for this chat at this index
                 return false;
             }
 
             log.info("INBOX FETCH: Message found for {}!", chat.recipient);
 
-            // 2. DECRYPTION
             byte[] payloadBytes = ChatCrypto.decryptPayloadBytes(pair.value(), chat.recvKey);
             ChatProto.ChatPayload chatPayload = ChatProto.ChatPayload.parseFrom(payloadBytes);
 
-            // 3. SAVE & ROTATE STATE
             String receivedMessage = chatPayload.getMessage();
             long nextIdx = chatPayload.getNextIdx();
             byte[] nextTagBytes = chatPayload.getNextTag().toByteArray();
@@ -255,31 +244,26 @@ public class InAndOutBox implements Runnable {
             chat.recvTag = nextTag;
             chat.recvKey = ChatCrypto.makeNewSecretKey(chat.recvKey);
 
-            // 4. PERSISTENCE
             byte[] newRecvKeyBytes = chat.recvKey.getEncoded();
             databaseManager.addReceivedMessageAndUpdateState(chat.recipient, chat.getRecipientUuid(), receivedMessage, newRecvKeyBytes, chat.recvIdx, chat.recvTag);
 
             chatCore.notifyMessageUpdate();
-            return true; // Work was done
+            return true;
 
         } catch (RemoteException e) {
             log.warn("RMI ERROR during inbox fetch for {}. Server unavailable. Will retry later.", chat.recipient);
-            this.bulletinBoard = null; // Reset connection
-            this.connectedHostPort = null;
+            bulletinBoardStubs.clear(); // Clear all stubs on error
             return false;
         } catch (Exception e) {
             log.error("Error during decryption or processing of received message for {}", chat.recipient, e);
 
-            // This is a poison message. To avoid getting stuck in a loop, put this chat in a temporary
-            // backoff period (e.g., 5 minutes) before trying to process its inbox again.
             chat.poisonedBackoffUntil = System.currentTimeMillis() + (5 * 60 * 1000);
             log.warn("Poison message detected for chat with {}. Backing off for 5 minutes.", chat.recipient);
 
-            return true; // Return true to indicate work was done (handling the poison pill)
+            return true;
         }
     }
 
-    // returns the rmi port for a given index -> used for server balancing
     private int getPortForIndex(long idx) {
         int portIndex = (int) (Math.abs(idx) % NUM_SERVERS);
         return RMI_PORTS[portIndex];
