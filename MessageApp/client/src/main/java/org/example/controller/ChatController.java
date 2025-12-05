@@ -170,6 +170,10 @@ public class ChatController {
             dialogStage.initModality(Modality.WINDOW_MODAL);
             dialogStage.initOwner(stage);
             Scene scene = new Scene(page);
+            
+            // Apply the same theme as the main window
+            scene.getStylesheets().addAll(stage.getScene().getStylesheets());
+            
             dialogStage.setScene(scene);
 
             NewChatController newChatController = loader.getController();

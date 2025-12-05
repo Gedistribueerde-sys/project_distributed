@@ -73,6 +73,11 @@
     -fx-font-size: 14px;
 }
 
+.hint-label {
+    -fx-text-fill: #7f8c8d;
+    -fx-font-size: 11px;
+}
+
 .split-pane {
     -fx-background-color: #f4f4f9;
     -fx-padding: 0;

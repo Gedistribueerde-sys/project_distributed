@@ -106,6 +106,7 @@ public class GUI extends Application {
             ChatController chatController = loader.getController();
             chatController.setController(chatCore);
             chatController.setGui(this);
+            chatController.setStage(stage);
             chatController.setup();
 
             // Add a listener to the controller's logout status

@@ -77,17 +77,3 @@
 .message-cell-hbox.right {
     -fx-alignment: center-right;
 }
-
-/* new chat dialog styles */
-.new-chat-dialog {
-    -fx-background-color: #f4f4f4;
-}
-
-.header-text {
-    -fx-font-size: 14px;
-}
-
-.status-label {
-    -fx-font-weight: bold;
-    -fx-text-fill: blue;
-}

@@ -119,6 +119,11 @@
     -fx-font-size: 14px;
 }
 
+.hint-label {
+    -fx-text-fill: #8b8fa3;
+    -fx-font-size: 11px;
+}
+
 .split-pane {
     -fx-background-color: #282a36;
     -fx-padding: 0;
@@ -136,12 +141,32 @@
     -fx-background-radius: 10;
     -fx-highlight-fill: #ff79c6;
     -fx-highlight-text-fill: #282a36;
+    -fx-text-fill: #f8f8f2;
+    -fx-prompt-text-fill: #6272a4;
 }
 
 .text-area .content {
     -fx-background-color: #44475a;
     -fx-background-radius: 10;
     -fx-text-fill: #f8f8f2;
+}
+
+.text-area .scroll-pane {
+    -fx-background-color: #44475a;
+}
+
+.text-area .scroll-pane .viewport {
+    -fx-background-color: #44475a;
+}
+
+.text-area .scroll-pane .content {
+    -fx-background-color: #44475a;
+}
+
+/* --- Separator --- */
+.separator .line {
+    -fx-border-color: #6272a4;
+    -fx-border-width: 1 0 0 0;
 }
 
 /* --- Chat Bubbles --- */
