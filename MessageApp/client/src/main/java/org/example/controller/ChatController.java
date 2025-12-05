@@ -66,7 +66,7 @@ public class ChatController {
 
             if (selectedIndex == 0) {
                 stateView.clear();
-                messagesView.getItems().add(new Message("system", "Use the dialog to start a chat..."));
+                messagesView.getItems().add(new Message("system", "Use the dialog to start a chat...", true));
                 // Hide buttons for new chat
                 sendButton.setVisible(false);
                 sendButton.setManaged(false);
@@ -99,7 +99,7 @@ public class ChatController {
     public void setup() {
         userLabel.setText("Logged in as: " + chatCore.getCurrentUser());
         // set the custom cell factory now that controller/current user is available
-        messagesView.setCellFactory(lv -> new MessageCell(chatCore.getCurrentUser()));
+        messagesView.setCellFactory(lv -> new MessageCell());
         updateChatList();
         // register the UI callback in the chatcore/processor
 

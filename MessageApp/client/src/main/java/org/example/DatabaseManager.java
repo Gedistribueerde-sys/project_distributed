@@ -215,7 +215,7 @@ public class DatabaseManager {
 
                     // Create Message with appropriate sender
                     String sender = isSent ? username : recipient;
-                    messages.add(new Message(sender, content));
+                    messages.add(new Message(sender, content, isSent));
                 }
             }
 

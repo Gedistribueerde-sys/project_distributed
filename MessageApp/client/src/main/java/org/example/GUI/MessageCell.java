@@ -12,10 +12,8 @@ import javafx.scene.layout.HBox;
  * It uses CSS classes defined in styles.css: .message-bubble, .incoming, .outgoing, .message-cell-hbox, .left, .right
  */
 public class MessageCell extends ListCell<Message> {
-    private final String currentUser;
 
-    public MessageCell(String currentUser) {
-        this.currentUser = currentUser;
+    public MessageCell() {
     }
 
     @Override
@@ -27,7 +25,7 @@ public class MessageCell extends ListCell<Message> {
             return;
         }
 
-        boolean outgoing = currentUser != null && currentUser.equals(item.sender());
+        boolean outgoing = item.isSent();
 
         Label bubble = new Label(item.text());
         bubble.setWrapText(true);

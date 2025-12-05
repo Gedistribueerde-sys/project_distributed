@@ -61,11 +61,11 @@ public class ChatState {
     }
 
     public void addSentMessage(String content, String sender) {
-        messages.add(new Message(sender, content));
+        messages.add(new Message(sender, content, true));
     }
 
     public void addReceivedMessage(String content) {
-        messages.add(new Message(recipient, content));
+        messages.add(new Message(recipient, content, false));
     }
 
     @Override

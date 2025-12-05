@@ -5,5 +5,5 @@ package org.example.GUI;
  * sender: the username who sent the message
  * text: the message body
  */
-public record Message(String sender, String text) {
+public record Message(String sender, String text, boolean isSent) {
 }
