@@ -7,7 +7,7 @@ horizontal scaling : know in the client how many servers there are =n , then do 
 ## MEDIUM PRIORITY
 
 - [ ] Make sure active chats are polled at constant rate and sends are instantly.
-- [ ] return false whenever there is a collision (server side)
+- [V] return false whenever there is a collision (server side)
 
 ## LOW PRIORITY
 - [ ] Adding `recoverability` to the client-side: recovery mechanisms to handle corrupted messages or unexpected shutdowns.

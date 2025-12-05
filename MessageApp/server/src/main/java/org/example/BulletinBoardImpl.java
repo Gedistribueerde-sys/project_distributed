@@ -24,14 +24,22 @@ public class BulletinBoardImpl implements BulletinBoard {
     @Override
     public boolean add(long idx, byte[] value, String tag) throws RemoteException {
         int index = computeIndex(idx);
-        logger.info("ADD at index {}: tag={}, valueSize={} bytes", index, tag, value.length);
+        // get the cell where we want to write
 
+        logger.info("ADD at index {}: tag={}, valueSize={} bytes", index, tag, value.length);
+        Map<String, byte[]> cell = board.get(index);
+        // Check for duplicate tag
+        synchronized (cell) {
+            if (cell.containsKey(tag)) {
+                logger.warn("ADD FAILED: Duplicate tag {} in cell at index {}", tag, index);
+                return false; // Duplicate tag, reject the add
+            }
+        }
         try {
             // 1. Persist to database first (Write-Through)
             dbManager.saveMessage(index, tag, value);
 
             // 2. Then update in-memory cache
-            Map<String, byte[]> cell = board.get(index);
             synchronized (cell) {
                 cell.put(tag, value);
                 logger.info("ADD SUCCESS: Cell at index {} now has {} entries", index, cell.size());
