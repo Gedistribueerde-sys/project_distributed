@@ -18,10 +18,11 @@ public class Server {
 
         BulletinBoardImpl bulletinBoard = new BulletinBoardImpl(dbManager);
         BulletinBoard stub = (BulletinBoard) UnicastRemoteObject.exportObject(bulletinBoard, 0);
-
-        Registry registry = LocateRegistry.createRegistry(1099);
+        int port = args.length > 0 ? Integer.parseInt(args[0]) : 1099;
+        Registry registry = LocateRegistry.createRegistry(port);
         registry.rebind("BulletinBoard", stub);
 
+        log.info("Server running on port : {}", port);
         CountDownLatch latch = new CountDownLatch(1);
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {

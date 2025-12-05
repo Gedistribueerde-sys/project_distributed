@@ -27,6 +27,10 @@ public class InAndOutBox implements Runnable {
     private Thread thread;
     private final Random random = new Random();
 
+    private static final int[] RMI_PORTS = {1099};
+    private static final int NUM_SERVERS = RMI_PORTS.length;
+    private String connectedHostPort = null; // Houdt bij met welke host:poort we verbonden zijn
+
     public InAndOutBox(ChatCore chatCore, DatabaseManager databaseManager) {
         this.chatCore = chatCore;
         this.databaseManager = databaseManager;
@@ -77,19 +81,6 @@ public class InAndOutBox implements Runnable {
         final int baseSleep = 500;
 
         while (running) {
-            // Check connection once per loop
-            if (!ensureConnected()) {
-                // If connection fails, apply exponential backoff and retry in the next loop
-                long sleepTime = currentBackoff + random.nextInt(1000);
-                currentBackoff = Math.min(currentBackoff * 2, maxBackoff);
-                try {
-                    Thread.sleep(sleepTime);
-                } catch (InterruptedException e) {
-                    break;
-                }
-                continue; // Skip processing if not connected
-            }
-
             boolean didWork = false;
 
             if (!running) break;
@@ -115,17 +106,35 @@ public class InAndOutBox implements Runnable {
         }
     }
 
-    private boolean ensureConnected() {
-        if (this.bulletinBoard != null) return true; // Already connected
+    // Binnen de InAndOutBox klasse
+    private boolean ensureConnected(long requiredIndex) {
+        int targetPort = getPortForIndex(requiredIndex);
+        String targetHost = "localhost"; // Of de daadwerkelijke hostnaam
+
+        String targetHostPort = targetHost + ":" + targetPort;
+
+        // break the connection if we are connected to the wrong server
+        if (this.bulletinBoard != null && !targetHostPort.equals(this.connectedHostPort)) {
+            log.info("DISCONNECT: breaking connection with {} needed server is : {} ", this.connectedHostPort, targetHostPort);
+            this.bulletinBoard = null;
+            this.connectedHostPort = null;
+        }
+
+        if (this.bulletinBoard != null) {
+            return true; //already connected to the board
+        }
 
         try {
-            Registry locateRegistry = LocateRegistry.getRegistry();
-            this.bulletinBoard = (BulletinBoard) locateRegistry.lookup("BulletinBoard");
-            log.info("RMI CONNECTION SUCCESS: BulletinBoard found and connected.");
+            // use the locate registry to get the remote bulletin board
+            Registry registry = LocateRegistry.getRegistry(targetHost, targetPort);
+            this.bulletinBoard = (BulletinBoard) registry.lookup("BulletinBoard");
+            this.connectedHostPort = targetHostPort;
+            log.info("RMI CONNECTION SUCCESS: Bulltinboard found and connected on : {}.", targetHostPort);
             return true;
         } catch (RemoteException | NotBoundException e) {
-            log.warn("RMI CONNECTION ERROR: BulletinBoard not reachable or not bound. Will retry later.");
+            log.warn("RMI CONNECTION ERROR: BulletinBoard on {} not accesible or found , trying again .", targetHostPort);
             this.bulletinBoard = null;
+            this.connectedHostPort = null;
             return false;
         }
     }
@@ -150,6 +159,10 @@ public class InAndOutBox implements Runnable {
         }
         ChatState chat = chatOptional.get();
 
+        if (!ensureConnected(chat.sendIdx)) {
+           // if the connection could not be established, return false to retry later
+            return false;
+        }
         try {
             // 1. Generate new state (idx', tag')
             long nextIdx = ChatCrypto.makeNewIdx();
@@ -190,6 +203,7 @@ public class InAndOutBox implements Runnable {
         } catch (RemoteException e) {
             log.warn("RMI ERROR during outbox push. Server may be offline. Will retry later.");
             this.bulletinBoard = null; // Reset connection
+            this.connectedHostPort = null;
             return false; // No work was done from a final point of view
         } catch (Exception e) {
             log.error("Failed to process outbox message for {}", pending.recipient(), e);
@@ -210,6 +224,9 @@ public class InAndOutBox implements Runnable {
         }
         ChatState chat = chatToProcessOpt.get();
 
+        if (!ensureConnected(chat.recvIdx)) {
+            return false;
+        }
         try {
             log.info("INBOX FETCH: Trying to receive for {} at recvIdx={} with tag={}", chat.recipient, chat.recvIdx, chat.recvTag);
 
@@ -248,6 +265,7 @@ public class InAndOutBox implements Runnable {
         } catch (RemoteException e) {
             log.warn("RMI ERROR during inbox fetch for {}. Server unavailable. Will retry later.", chat.recipient);
             this.bulletinBoard = null; // Reset connection
+            this.connectedHostPort = null;
             return false;
         } catch (Exception e) {
             log.error("Error during decryption or processing of received message for {}", chat.recipient, e);
@@ -259,5 +277,11 @@ public class InAndOutBox implements Runnable {
 
             return true; // Return true to indicate work was done (handling the poison pill)
         }
+    }
+
+    // returns the rmi port for a given index -> used for server balancing
+    private int getPortForIndex(long idx) {
+        int portIndex = (int) (Math.abs(idx) % NUM_SERVERS);
+        return RMI_PORTS[portIndex];
     }
 }
