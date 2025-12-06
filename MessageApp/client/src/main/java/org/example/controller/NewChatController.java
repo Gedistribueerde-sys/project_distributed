@@ -16,6 +16,8 @@ public class NewChatController {
     private static final Logger log = LoggerFactory.getLogger(NewChatController.class);
 
     @FXML
+    private TextField chatNameField;
+    @FXML
     private TextArea sendKeyDisplay;
     @FXML
     private Button generateSendKeyButton;
@@ -66,6 +68,13 @@ public class NewChatController {
 
     @FXML
     private void handleCreateChat() {
+        String chatName = chatNameField.getText().trim();
+        if (chatName.isEmpty()) {
+            // Optionally, show an alert to the user
+            log.error("Chat name cannot be empty");
+            return;
+        }
+
         String receiveKey = receiveKeyArea.getText().trim();
         String sendKey = generatedSendKey;
 
@@ -74,7 +83,7 @@ public class NewChatController {
             return;
         }
 
-        boolean success = chatCore.createChatWithKeys(sendKey, receiveKey);
+        boolean success = chatCore.createChatWithKeys(chatName, sendKey, receiveKey);
 
         if (success) {
             // Close dialog after a brief delay

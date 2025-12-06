@@ -17,6 +17,12 @@
     </padding>
     <children>
         <Label text="Create New Chat" styleClass="title-label"/>
+        
+        <VBox spacing="6">
+            <Label text="Chat Name" styleClass="title-label"/>
+            <TextField fx:id="chatNameField" promptText="Enter a name for the chat"/>
+        </VBox>
+        
         <Separator/>
 
         <!-- Send Key Section -->

@@ -168,16 +168,15 @@ public class ChatCore {
     // Generate a send key encoded as protobuf Base64 string
     // This key can be given to another user so they can receive messages
     public String generateSendKeyInfo() throws Exception {
-        ChatProto.KeyInfo keyInfo = ChatCrypto.generateBumpKeyInfo(currentUser, currentUserUuid);
+        ChatProto.KeyInfo keyInfo = ChatCrypto.generateBumpKeyInfo(currentUserUuid);
 
         byte[] serialized = keyInfo.toByteArray();
         return Base64.getEncoder().encodeToString(serialized);
     }
 
     // Create a new chat with optional send and receive keys
-    public boolean createChatWithKeys(String sendKeyString, String receiveKeyString) {
+    public boolean createChatWithKeys(String recipientName, String sendKeyString, String receiveKeyString) {
         try {
-            String recipientName = null;
             String recipientUuid = null;
 
             // At least one key must be present
@@ -199,7 +198,6 @@ public class ChatCore {
                 byte[] decoded = Base64.getDecoder().decode(sendKeyString.trim());
                 ChatProto.KeyInfo keyInfo = ChatProto.KeyInfo.parseFrom(decoded);
 
-                recipientName = keyInfo.getSenderName();
                 recipientUuid = keyInfo.getSenderUuid();
 
                 byte[] keyBytes = keyInfo.getKey().toByteArray();
@@ -215,8 +213,7 @@ public class ChatCore {
                 byte[] decoded = Base64.getDecoder().decode(receiveKeyString.trim());
                 ChatProto.KeyInfo keyInfo = ChatProto.KeyInfo.parseFrom(decoded);
 
-                if (recipientName == null) {
-                    recipientName = keyInfo.getSenderName();
+                if (recipientUuid == null) {
                     recipientUuid = keyInfo.getSenderUuid();
                 }
 
@@ -228,7 +225,7 @@ public class ChatCore {
                 log.info("Parsed receive key: idx={}, tag={}", recvIdx, recvTag);
             }
 
-            if (recipientName == null) {
+            if (recipientUuid == null) {
                 log.error("Could not extract recipient info from keys");
                 return false;
             }

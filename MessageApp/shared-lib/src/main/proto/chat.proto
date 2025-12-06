@@ -15,6 +15,5 @@ message KeyInfo {
   bytes key = 1;       // AES key encoded as bytes
   int64 idx = 2;       // Starting index
   bytes tag = 3;       // Initial tag (32 bytes)
-  string sender_name = 4;
-  string sender_uuid = 5;
+  string sender_uuid = 4;
 }
