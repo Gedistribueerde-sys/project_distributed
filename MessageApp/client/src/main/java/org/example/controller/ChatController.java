@@ -4,7 +4,10 @@ import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.stage.Stage;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
+import javafx.geometry.Pos;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.stage.Modality;
@@ -54,6 +57,53 @@ public class ChatController {
 
     @FXML
     public void initialize() {
+        // Custom Cell Factory for Chat List to include Rename Button
+        chatList.setCellFactory(lv -> new ListCell<String>() {
+            private final HBox content;
+            private final Label nameLabel;
+            private final Button renameButton;
+
+            {
+                nameLabel = new Label();
+                nameLabel.setMaxWidth(Double.MAX_VALUE);
+                HBox.setHgrow(nameLabel, Priority.ALWAYS);
+
+                renameButton = new Button("✎"); // Pencil icon or "Rename"
+                renameButton.setStyle("-fx-font-size: 16px; -fx-padding: 4 8;");
+                renameButton.setOnAction(event -> {
+                    String item = getItem();
+                    if (item != null && getIndex() > 0) { // Index 0 is "New Chat"
+                        handleRenameChat(getIndex());
+                    }
+                });
+
+                content = new HBox(nameLabel, renameButton);
+                content.setSpacing(5);
+                content.setAlignment(Pos.CENTER_LEFT);
+            }
+
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setGraphic(null);
+                    setText(null);
+                } else {
+                    nameLabel.setText(item);
+                    // Hide rename button for "New Chat" (index 0)
+                    if (getIndex() == 0) {
+                        renameButton.setVisible(false);
+                        renameButton.setManaged(false);
+                    } else {
+                        renameButton.setVisible(true);
+                        renameButton.setManaged(true);
+                    }
+                    setGraphic(content);
+                    setText(null);
+                }
+            }
+        });
+
         // This is called after the FXML file has been loaded
         chatList.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal == null) return;
@@ -92,6 +142,31 @@ public class ChatController {
                 refreshMessagesView(selectedIndex);
                 String debugText = chatCore.getDebugStateForIndex(selectedIndex);
                 stateView.setText(debugText);
+            }
+        });
+    }
+
+    private void handleRenameChat(int selectedIndex) {
+        if (selectedIndex <= 0) return;
+
+        TextInputDialog dialog = new TextInputDialog();
+        dialog.setTitle("Rename Chat");
+        dialog.setHeaderText("Enter a new name for this chat:");
+        dialog.setContentText("Name:");
+        dialog.setGraphic(null); // Remove the default question mark icon
+        dialog.getDialogPane().setMinWidth(350); // Ensure dialog is wide enough
+
+        // Apply theme to dialog
+        if (stage != null && stage.getScene() != null) {
+            dialog.getDialogPane().getStylesheets().addAll(stage.getScene().getStylesheets());
+        }
+
+        dialog.showAndWait().ifPresent(name -> {
+            if (!name.trim().isEmpty()) {
+                chatCore.renameChat(selectedIndex, name.trim());
+                updateChatList();
+                // Reselect to keep focus
+                chatList.getSelectionModel().select(selectedIndex);
             }
         });
     }

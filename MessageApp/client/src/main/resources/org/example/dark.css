@@ -33,6 +33,19 @@
     -fx-background-color: #ffb86c;
 }
 
+/* --- Top Bar --- */
+.top-bar {
+    -fx-background-color: #282a36;
+    -fx-padding: 5;
+    -fx-border-color: #6272a4;
+    -fx-border-width: 0 0 1 0;
+}
+
+.user-label {
+    -fx-text-fill: #f8f8f2;
+    -fx-font-weight: bold;
+}
+
 
 /* --- Text Fields & Password Fields --- */
 .text-field, .password-field {
@@ -192,4 +205,29 @@
 /* --- VBox containers for chat --- */
 #leftBox, #rightBox {
     -fx-background-color: #282a36;
+}
+
+/* --- Dialog Panes --- */
+.dialog-pane {
+    -fx-background-color: #282a36;
+}
+
+.dialog-pane > .content {
+    -fx-background-color: #282a36;
+}
+
+.dialog-pane > .button-bar > .container {
+    -fx-background-color: #282a36;
+}
+
+.dialog-pane .header-panel {
+    -fx-background-color: #44475a;
+}
+
+.dialog-pane .header-panel .label {
+    -fx-text-fill: #f8f8f2;
+}
+
+.dialog-pane .content .label {
+    -fx-text-fill: #f8f8f2;
 }

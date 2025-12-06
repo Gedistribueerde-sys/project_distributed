@@ -146,6 +146,83 @@ public class DatabaseManager {
         }
     }
 
+    public void renameChat(String recipientUuid, String oldName, String newName) {
+        log.info("Renaming chat {} from '{}' to '{}'", recipientUuid, oldName, newName);
+
+        byte[] oldAad = CryptoUtils.makeAAD(username, oldName);
+        byte[] newAad = CryptoUtils.makeAAD(username, newName);
+
+        String selectChatSql = "SELECT send_key, receive_key FROM chat_sessions WHERE recipient_uuid = ?";
+        String updateChatSql = "UPDATE chat_sessions SET recipient_name = ?, send_key = ?, receive_key = ? WHERE recipient_uuid = ?";
+
+        String selectMsgsSql = "SELECT id, content FROM messages WHERE recipient_uuid = ?";
+        String updateMsgSql = "UPDATE messages SET content = ? WHERE id = ?";
+
+        try (Connection conn = DriverManager.getConnection(url)) {
+            conn.setAutoCommit(false); // Start transaction
+
+            try {
+                // 1. Re-encrypt Chat Keys
+                byte[] rawSendKey = null;
+                byte[] rawRecvKey = null;
+
+                try (PreparedStatement ps = conn.prepareStatement(selectChatSql)) {
+                    ps.setString(1, recipientUuid);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        if (rs.next()) {
+                            byte[] encSend = rs.getBytes("send_key");
+                            byte[] encRecv = rs.getBytes("receive_key");
+                            if (encSend != null) rawSendKey = CryptoUtils.decrypt(encSend, dbKey, oldAad);
+                            if (encRecv != null) rawRecvKey = CryptoUtils.decrypt(encRecv, dbKey, oldAad);
+                        } else {
+                            throw new SQLException("Chat not found for UUID: " + recipientUuid);
+                        }
+                    }
+                }
+
+                try (PreparedStatement ps = conn.prepareStatement(updateChatSql)) {
+                    ps.setString(1, newName);
+                    ps.setBytes(2, rawSendKey == null ? null : CryptoUtils.encrypt(rawSendKey, dbKey, newAad));
+                    ps.setBytes(3, rawRecvKey == null ? null : CryptoUtils.encrypt(rawRecvKey, dbKey, newAad));
+                    ps.setString(4, recipientUuid);
+                    ps.executeUpdate();
+                }
+
+                // 2. Re-encrypt Messages
+                try (PreparedStatement psSelect = conn.prepareStatement(selectMsgsSql);
+                     PreparedStatement psUpdate = conn.prepareStatement(updateMsgSql)) {
+
+                    psSelect.setString(1, recipientUuid);
+                    try (ResultSet rs = psSelect.executeQuery()) {
+                        while (rs.next()) {
+                            long id = rs.getLong("id");
+                            byte[] encContent = rs.getBytes("content");
+
+                            byte[] rawContent = CryptoUtils.decrypt(encContent, dbKey, oldAad);
+                            byte[] newEncContent = CryptoUtils.encrypt(rawContent, dbKey, newAad);
+
+                            psUpdate.setBytes(1, newEncContent);
+                            psUpdate.setLong(2, id);
+                            psUpdate.addBatch();
+                        }
+                    }
+                    psUpdate.executeBatch();
+                }
+
+                conn.commit();
+                log.info("Chat renamed successfully.");
+
+            } catch (Exception e) {
+                conn.rollback();
+                throw e;
+            }
+
+        } catch (Exception e) {
+            log.error("Failed to rename chat", e);
+            throw new RuntimeException("Failed to rename chat", e);
+        }
+    }
+
     /**
      * Loads a single chat state from database.
      *

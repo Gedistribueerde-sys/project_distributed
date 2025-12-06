@@ -9,7 +9,7 @@ import java.util.List;
 
 // This class holds the state of a chat with a specific recipient
 public class ChatState {
-    public final String recipient;
+    public String recipient;
     public final String recipientUuid;
 
     // Sending capability (nullable if receive-only)
@@ -41,6 +41,10 @@ public class ChatState {
         this.recvTag = recvTag;
 
         this.messages = new ArrayList<>();
+    }
+
+    public void setRecipient(String recipient) {
+        this.recipient = recipient;
     }
 
     public String getRecipientUuid() {
@@ -79,13 +83,19 @@ public class ChatState {
     public String toString() {
         String status = "";
         if (canSend() && canReceive()) {
-            status = " (⇄)"; // Two-way
+            status = " (<->)"; // Two-way
         } else if (canSend()) {
-            status = " (→)"; // Send only
+            status = " (->)"; // Send only
         } else if (canReceive()) {
-            status = " (←)"; // Receive only
+            status = " (<-)"; // Receive only
         }
-        return "Chat with " + recipient + " (" + recipientUuid + ")" + status;
+        
+        String shortUuid = recipientUuid;
+        if (recipientUuid != null && recipientUuid.length() > 8) {
+            shortUuid = recipientUuid.substring(0, 8) + "...";
+        }
+        
+        return recipient + " [" + shortUuid + "]" + status;
     }
 
     // This is for debug purposes only

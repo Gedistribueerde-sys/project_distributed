@@ -270,9 +270,30 @@ public class ChatCore {
     //  Retrieves the names of the chats for the GUI
     public List<String> getChatNames() {
         List<String> names = new ArrayList<>();
-        names.add("➕ New Chat (BUMP)");
+        names.add("+ New Chat (BUMP)");
         activeChats.forEach(chat -> names.add(chat.toString()));
         return names;
+    }
+
+    public void renameChat(int listIndex, String newName) {
+        int idx = listIndex - 1;
+        if (idx < 0 || idx >= activeChats.size()) return;
+
+        ChatState chat = activeChats.get(idx);
+        String oldName = chat.recipient;
+
+        if (oldName.equals(newName)) return;
+
+        // Update database first (transactional)
+        if (databaseManager != null) {
+            databaseManager.renameChat(chat.getRecipientUuid(), oldName, newName);
+        }
+
+        // Update in-memory state
+        chat.setRecipient(newName);
+
+        // Notify UI
+        notifyMessageUpdate();
     }
 
     // sendmessage is now mainly in the inandoutbox
