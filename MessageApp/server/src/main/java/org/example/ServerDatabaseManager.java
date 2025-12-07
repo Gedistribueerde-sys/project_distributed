@@ -22,6 +22,7 @@ public class ServerDatabaseManager {
         String sql = """
                 CREATE TABLE IF NOT EXISTS bulletin_board (
                     cell_index INTEGER NOT NULL,
+                    board_capacity INTEGER NOT NULL,
                     message_tag TEXT PRIMARY KEY,
                     message_value BLOB NOT NULL
                 );
@@ -35,9 +36,9 @@ public class ServerDatabaseManager {
             throw new RuntimeException("Failed to initialize the database", e);
         }
     }
-
+/* // not used anymore , but I'll keep it here for later or so
     public List<Map<String, byte[]>> loadAllMessages(int boardSize) {
-        String sql = "SELECT cell_index, message_tag, message_value FROM bulletin_board";
+        String sql = "SELECT cell_index, board_capacity, message_tag, message_value FROM bulletin_board";
         List<Map<String, byte[]>> boardState = new ArrayList<>(boardSize);
         for (int i = 0; i < boardSize; i++) {
             boardState.add(new ConcurrentHashMap<>());
@@ -67,14 +68,15 @@ public class ServerDatabaseManager {
 
         return boardState;
     }
-
-    public void saveMessage(int cellIndex, String messageTag, byte[] messageValue) {
-        String sql = "INSERT INTO bulletin_board(cell_index, message_tag, message_value) VALUES(?,?,?)";
+*/
+    public void saveMessage(int cellIndex, int boardCapacity, String messageTag, byte[] messageValue) {
+        String sql = "INSERT INTO bulletin_board(cell_index, board_capacity, message_tag, message_value) VALUES(?,?,?,?)";
 
         try (Connection conn = connect(); PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setInt(1, cellIndex);
-            stmt.setString(2, messageTag);
-            stmt.setBytes(3, messageValue);
+            stmt.setInt(2, boardCapacity);
+            stmt.setString(3, messageTag);
+            stmt.setBytes(4, messageValue);
             stmt.executeUpdate();
         } catch (SQLException e) {
             log.error("Error saving message with tag '{}'", messageTag, e);
@@ -104,7 +106,50 @@ public class ServerDatabaseManager {
         }
         return conn;
     }
+    public record PersistedMessage(int cellIndex, int boardCapacity, String messageTag, byte[] messageValue) {}
+    // ServerDatabaseManager.java (New Method)
 
+    public List<Integer> getAllBoardCapacities() {
+        String sql = "SELECT DISTINCT board_capacity FROM bulletin_board";
+        List<Integer> capacities = new ArrayList<>();
+
+        try (Connection conn = connect();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+
+            while (rs.next()) {
+                capacities.add(rs.getInt("board_capacity"));
+            }
+        } catch (SQLException e) {
+            log.error("Error retrieving board capacities", e);
+            throw new RuntimeException("Failed to retrieve capacities", e);
+        }
+        return capacities;
+    }
+    public List<PersistedMessage> loadAllMessagesWithCapacity() {
+        // Note: The SQL must now include board_capacity
+        String sql = "SELECT cell_index, board_capacity, message_tag, message_value FROM bulletin_board";
+        List<PersistedMessage> messages = new ArrayList<>();
+
+        try (Connection conn = connect();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+
+            while (rs.next()) {
+                messages.add(new PersistedMessage(
+                        rs.getInt("cell_index"),
+                        rs.getInt("board_capacity"), // <-- Retrieve new column
+                        rs.getString("message_tag"),
+                        rs.getBytes("message_value")
+                ));
+            }
+            log.info("Loaded {} raw messages from the database.", messages.size());
+        } catch (SQLException e) {
+            log.error("Error loading messages from the database", e);
+            throw new RuntimeException("Failed to load messages from the database", e);
+        }
+        return messages;
+    }
 }
 
 
