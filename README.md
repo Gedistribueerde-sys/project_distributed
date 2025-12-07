@@ -14,7 +14,7 @@ The project is divided into three Maven modules:
 
 ### Prerequisites
 
--   Java (JDK 11 or higher)
+-   Java (JDK 16 or higher)
 -   Apache Maven
 
 ### Build
@@ -27,15 +27,23 @@ mvn clean install
 
 This will build all three modules and create the necessary JAR files.
 
-### Run the Server
+### Run the Servers
 
-To run the server, execute the following command from the `MessageApp` directory:
+To run the servers, execute the following command from the `MessageApp` directory:
 
+**Server 1:**
 ```bash
-mvn exec:java -pl server
+mvn exec:java -pl server -Dexec.args="1100"
 ```
 
-The server will start and listen for RMI connections on port 1099.
+**Server 2:**
+```bash
+mvn exec:java -pl server -Dexec.args="1099"
+```
+
+The servers will start and listen for RMI connections.
+
+NOTE: If you want more servers, adjust the client code to add the ports of the servers to the list.
 
 ### Run the Client
 
