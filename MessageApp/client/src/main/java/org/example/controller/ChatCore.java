@@ -229,15 +229,22 @@ public class ChatCore {
             }
 
             if (recipientUuid == null) {
-                log.error("Could not extract recipient info from keys. A receive key is required to identify the recipient.");
-                return false;
+                // If no receive key was provided, but a send key was, generate a random UUID as a placeholder
+                if (sendKeyString != null && !sendKeyString.trim().isEmpty()) {
+                    recipientUuid = java.util.UUID.randomUUID().toString();
+                    log.warn("No receive key provided. Generating a random placeholder UUID for the recipient: {}. This may need to be updated later.", recipientUuid);
+                } else {
+                    // No keys at all, this is an error
+                    log.error("Could not extract recipient info from keys. At least one key is required, and a receive key is preferred to identify the recipient.");
+                    return false;
+                }
             }
 
             // Check for duplicate
             String finalRecipientUuid = recipientUuid;
             boolean exists = activeChats.stream().anyMatch(c -> c.recipientUuid.equals(finalRecipientUuid));
             if (exists) {
-                log.error("Chat with {} already exists", recipientName);
+                log.error("Chat with {} (UUID: {}) already exists", recipientName, finalRecipientUuid);
                 return false;
             }
 
