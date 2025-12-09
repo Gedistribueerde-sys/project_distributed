@@ -197,29 +197,12 @@ public class ChatCore {
             long recvIdx = 0;
             String recvTag = null;
 
-            // Parse send key if present
-            if (sendKeyString != null && !sendKeyString.trim().isEmpty()) {
-                byte[] decoded = Base64.getDecoder().decode(sendKeyString.trim());
-                ChatProto.KeyInfo keyInfo = ChatProto.KeyInfo.parseFrom(decoded);
-
-                recipientUuid = keyInfo.getSenderUuid();
-
-                byte[] keyBytes = keyInfo.getKey().toByteArray();
-                sendSecretKey = new SecretKeySpec(keyBytes, 0, keyBytes.length, "AES");
-                sendIdx = keyInfo.getIdx();
-                sendTag = Base64.getEncoder().encodeToString(keyInfo.getTag().toByteArray());
-
-                log.info("Parsed send key: idx={}, tag={}", sendIdx, sendTag);
-            }
-
-            // Parse receive key if present
+            // Parse receive key first, as it reliably gives us the recipient's UUID
             if (receiveKeyString != null && !receiveKeyString.trim().isEmpty()) {
                 byte[] decoded = Base64.getDecoder().decode(receiveKeyString.trim());
                 ChatProto.KeyInfo keyInfo = ChatProto.KeyInfo.parseFrom(decoded);
 
-                if (recipientUuid == null) {
-                    recipientUuid = keyInfo.getSenderUuid();
-                }
+                recipientUuid = keyInfo.getSenderUuid();
 
                 byte[] keyBytes = keyInfo.getKey().toByteArray();
                 recvSecretKey = new SecretKeySpec(keyBytes, 0, keyBytes.length, "AES");
@@ -229,8 +212,24 @@ public class ChatCore {
                 log.info("Parsed receive key: idx={}, tag={}", recvIdx, recvTag);
             }
 
+            // Parse send key. Do NOT use it to determine recipientUuid
+            if (sendKeyString != null && !sendKeyString.trim().isEmpty()) {
+                byte[] decoded = Base64.getDecoder().decode(sendKeyString.trim());
+                ChatProto.KeyInfo keyInfo = ChatProto.KeyInfo.parseFrom(decoded);
+
+                // Do NOT set recipientUuid here, it's our UUID, not the recipient's
+                // recipientUuid = keyInfo.getSenderUuid(); // REMOVED
+
+                byte[] keyBytes = keyInfo.getKey().toByteArray();
+                sendSecretKey = new SecretKeySpec(keyBytes, 0, keyBytes.length, "AES");
+                sendIdx = keyInfo.getIdx();
+                sendTag = Base64.getEncoder().encodeToString(keyInfo.getTag().toByteArray());
+
+                log.info("Parsed send key: idx={}, tag={}", sendIdx, sendTag);
+            }
+
             if (recipientUuid == null) {
-                log.error("Could not extract recipient info from keys");
+                log.error("Could not extract recipient info from keys. A receive key is required to identify the recipient.");
                 return false;
             }
 
