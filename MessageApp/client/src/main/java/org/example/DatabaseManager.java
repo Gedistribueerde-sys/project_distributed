@@ -148,26 +148,6 @@ public class DatabaseManager {
         }
     }
 
-    public PersistedChatState getChatStateByUuid(String recipientUuid) {
-        String sql = "SELECT * FROM chat_sessions WHERE recipient_uuid = ?";
-        byte[] aad = CryptoUtils.makeAAD(username, recipientUuid);
-        try (Connection conn = DriverManager.getConnection(url); PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, recipientUuid);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (!rs.next()) return null;
-                String recipientName = rs.getString("recipient_name");
-                byte[] encSend = rs.getBytes("send_key");
-                byte[] encRecv = rs.getBytes("receive_key");
-                byte[] rawSend = encSend == null ? null : CryptoUtils.decrypt(encSend, dbKey, aad);
-                byte[] rawRecv = encRecv == null ? null : CryptoUtils.decrypt(encRecv, dbKey, aad);
-                return new PersistedChatState(recipientName, rs.getString("recipient_uuid"), rawSend, rawRecv, rs.getLong("send_next_idx"), rs.getLong("receive_next_idx"), rs.getString("send_tag"), rs.getString("recv_tag"));
-            }
-        } catch (Exception e) {
-            log.error("Failed to get chat state for {}", recipientUuid, e);
-            throw new RuntimeException(e);
-        }
-    }
-
     public List<PersistedChatState> loadAllChatStates() {
         String sql = "SELECT * FROM chat_sessions";
         List<PersistedChatState> out = new ArrayList<>();

@@ -36,39 +36,7 @@ public class ServerDatabaseManager {
             throw new RuntimeException("Failed to initialize the database", e);
         }
     }
-/* // not used anymore , but I'll keep it here for later or so
-    public List<Map<String, byte[]>> loadAllMessages(int boardSize) {
-        String sql = "SELECT cell_index, board_capacity, message_tag, message_value FROM bulletin_board";
-        List<Map<String, byte[]>> boardState = new ArrayList<>(boardSize);
-        for (int i = 0; i < boardSize; i++) {
-            boardState.add(new ConcurrentHashMap<>());
-        }
 
-        int messageCount = 0;
-        try (Connection conn = connect(); Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(sql)) {
-
-            while (rs.next()) {
-                int cellIndex = rs.getInt("cell_index");
-                String messageTag = rs.getString("message_tag");
-                byte[] messageValue = rs.getBytes("message_value");
-
-                if (cellIndex >= 0 && cellIndex < boardSize) {
-                    boardState.get(cellIndex).put(messageTag, messageValue);
-                    messageCount++;
-                } else {
-                    log.warn("Found message with out-of-bounds cell_index {} in database. Ignoring.", cellIndex);
-                }
-            }
-
-            log.info("Loaded {} messages from the database into {} cells.", messageCount, boardSize);
-        } catch (SQLException e) {
-            log.error("Error loading messages from the database", e);
-            throw new RuntimeException("Failed to load messages from the database", e);
-        }
-
-        return boardState;
-    }
-*/
     public void saveMessage(int cellIndex, int boardCapacity, String messageTag, byte[] messageValue) {
         String sql = "INSERT INTO bulletin_board(cell_index, board_capacity, message_tag, message_value) VALUES(?,?,?,?)";
 

@@ -20,15 +20,9 @@ public class NewChatController {
     @FXML
     private TextArea sendKeyDisplay;
     @FXML
-    private Button generateSendKeyButton;
-    @FXML
     private Button copySendKeyButton;
     @FXML
     private TextArea receiveKeyArea;
-    @FXML
-    private Button createChatButton;
-    @FXML
-    private Button cancelButton;
 
     private ChatCore chatCore;
     private Stage dialogStage;

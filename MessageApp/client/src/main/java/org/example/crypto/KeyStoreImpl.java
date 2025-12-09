@@ -85,10 +85,6 @@ public class KeyStoreImpl {
     }
 
 
-    public KeyStore getKeyStore() {
-        return keyStore;
-    }
-
     /**
      * Retrieves the database encryption key from the keystore.
      *

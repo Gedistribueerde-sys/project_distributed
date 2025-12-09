@@ -371,13 +371,6 @@ public class ChatCore {
         return activeChats.get(idx).canSend();
     }
 
-    public boolean canReceiveFromChat(int listIndex) {
-        int idx = listIndex - 1;
-        if (idx < 0 || idx >= activeChats.size()) return false;
-        return activeChats.get(idx).canReceive();
-    }
-
-
     // get the chatstate by recipient name
     public Optional<ChatState> getChatStateByRecipientUuid(String recipientUuid) {
         return activeChats.stream().filter(c -> c.recipientUuid.equals(recipientUuid)).findFirst();
