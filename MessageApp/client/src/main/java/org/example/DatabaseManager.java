@@ -190,10 +190,10 @@ public class DatabaseManager {
         return out;
     }
 
-    public void addMessage(String recipient, String recipientUuid, String messageText, boolean isSent, boolean isServerSent) {
+    public long addMessage(String recipient, String recipientUuid, String messageText, boolean isSent, boolean isServerSent) {
         String sql = "INSERT INTO messages(recipient_uuid, timestamp, is_sent, is_server_sent, content) VALUES(?,?,?,?,?)";
         byte[] aad = CryptoUtils.makeAAD(username, recipientUuid);
-        try (Connection conn = DriverManager.getConnection(url); PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (Connection conn = DriverManager.getConnection(url); PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, recipientUuid);
             ps.setLong(2, System.currentTimeMillis());
             ps.setInt(3, isSent ? 1 : 0);
@@ -201,6 +201,14 @@ public class DatabaseManager {
             ps.setBytes(5, CryptoUtils.encrypt(messageText.getBytes(StandardCharsets.UTF_8), dbKey, aad));
             ps.executeUpdate();
             log.debug("Saved message for recipient: {}", recipient);
+
+            try (ResultSet generatedKeys = ps.getGeneratedKeys()) {
+                if (generatedKeys.next()) {
+                    return generatedKeys.getLong(1);
+                } else {
+                    throw new SQLException("Creating message failed, no ID obtained.");
+                }
+            }
         } catch (Exception e) {
             log.error("Failed to add message for {}", recipient, e);
             throw new RuntimeException(e);

@@ -118,6 +118,10 @@ public class ChatCore {
         return currentUserUuid;
     }
 
+    public InAndOutBox getInAndOutBox() {
+        return inAndOutBox;
+    }
+
     public void logout() {
 
         if (inAndOutBox != null) {
@@ -316,11 +320,16 @@ public class ChatCore {
             // add it locally to the chat state and database as UNSENT
             // this is for the ui
             chat.addSentMessage(message, currentUser);
+            notifyMessageUpdate();
+
 
             // save it in the db as unsent
             if (databaseManager != null) {
 
-                databaseManager.addMessage(chat.recipient, chat.getRecipientUuid(), message, true, false);
+                long messageId = databaseManager.addMessage(chat.recipient, chat.getRecipientUuid(), message, true, false);
+                DatabaseManager.PendingMessage pendingMessage = new DatabaseManager.PendingMessage(messageId, chat.recipient, chat.getRecipientUuid(), message);
+                new Thread(() -> inAndOutBox.sendMessageImmediately(pendingMessage)).start();
+
             }
 
             log.info("Bericht lokaal gebufferd voor verzending naar {}", chat.recipient);
@@ -331,6 +340,14 @@ public class ChatCore {
         } catch (Exception e) {
             log.error("Exception while buffering message", e);
         }
+    }
+
+    public ChatState getChatState(int listIndex) {
+        int idx = listIndex - 1;
+        if (idx < 0 || idx >= activeChats.size()) {
+            return null;
+        }
+        return activeChats.get(idx);
     }
 
     public List<Message> getMessagesForChat(int listIndex) {

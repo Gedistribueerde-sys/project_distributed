@@ -11,6 +11,7 @@ import javafx.geometry.Pos;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.stage.Modality;
+import org.example.ChatState;
 import org.example.GUI.Message;
 import org.example.GUI.MessageCell;
 import org.example.GUI.GUI;
@@ -137,6 +138,11 @@ public class ChatController {
                 messageField.setVisible(canSend);
                 messageField.setManaged(canSend);
 
+                // Immediately fetch messages for the selected chat
+                ChatState selectedChat = chatCore.getChatState(selectedIndex);
+                if (selectedChat != null) {
+                    new Thread(() -> chatCore.getInAndOutBox().fetchMessagesImmediately(selectedChat)).start();
+                }
 
                 // Refresh the message view and state
                 refreshMessagesView(selectedIndex);

@@ -16,6 +16,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
 
+import java.util.concurrent.locks.ReentrantLock;
+
 /**
  * Processes locally buffered messages (Outbox) and retrieves new messages (Inbox).
  * Handles retry logic and the connection with the BulletinBoard.
@@ -27,6 +29,9 @@ public class InAndOutBox implements Runnable {
     private volatile boolean running = false;
     private Thread thread;
     private final Random random = new Random();
+    private final ReentrantLock outboxLock = new ReentrantLock();
+    private final ReentrantLock inboxLock = new ReentrantLock();
+
 
     private static final int[] RMI_PORTS = {1099, 1100};
     private static final int NUM_SERVERS = RMI_PORTS.length;
@@ -38,86 +43,122 @@ public class InAndOutBox implements Runnable {
         this.chatCore = chatCore;
         this.databaseManager = databaseManager;
     }
-
-    public void start() {
-        if (running) return;
-        running = true;
-        thread = new Thread(this, "Outbox-Inbox-Processor-Thread");
-        thread.start();
-        log.info("Message processor started.");
-    }
-
-    /**
-     * Signals the message processor to stop.
-     * The shutdown is not immediate. If an RMI or database operation is in progress,
-     * the thread will complete the current message processing before terminating.
-     * This method interrupts the thread to wake it from sleep and relies on the
-     * run loop checking the `running` flag.
-     */
-    public void stop() {
-        running = false;
-        disconnect();
-        if (thread != null) {
-            thread.interrupt();
+    
+        public void start() {
+            if (running) return;
+            running = true;
+            thread = new Thread(this, "Outbox-Inbox-Processor-Thread");
+            thread.start();
+            log.info("Message processor started.");
         }
-        log.info("Message processor stopping.");
-    }
-
-    /**
-     * Waits for the message processing thread to terminate.
-     * This should be called after `stop()` to ensure a graceful shutdown.
-     */
-    public void join() {
-        try {
+    
+        /**
+         * Signals the message processor to stop.
+         * The shutdown is not immediate. If an RMI or database operation is in progress,
+         * the thread will complete the current message processing before terminating.
+         * This method interrupts the thread to wake it from sleep and relies on the
+         * run loop checking the `running` flag.
+         */
+        public void stop() {
+            running = false;
+            disconnect();
             if (thread != null) {
-                thread.join();
+                thread.interrupt();
             }
-        } catch (InterruptedException e) {
-            log.warn("Interrupted while waiting for message processor to stop.", e);
-            Thread.currentThread().interrupt();
+            log.info("Message processor stopping.");
         }
-    }
-
-    private void disconnect() {
-        bulletinBoardStubs.clear();
-        log.info("All RMI connections disconnected.");
-    }
-
-    @Override
-    public void run() {
-        long currentBackoff = 1000;
-        final int maxBackoff = 8000;
-        final int baseSleep = 500;
-
-        while (running) {
-            boolean didWork = false;
-
-            if (!running) break;
-            didWork |= processOneOutboxMessageSafely();
-
-            if (!running) break;
-            didWork |= processOneInboxMessageSafely();
-
-            if (!running) break;
-            didWork |= processOneConfirmationSafely();
-
-            long sleepTime;
-            if (didWork) {
-                sleepTime = baseSleep;
-                currentBackoff = 1000; // Reset backoff on success
-            } else {
-                sleepTime = currentBackoff + random.nextInt(1000);
-                currentBackoff = Math.min(currentBackoff * 2, maxBackoff);
-            }
-
+    
+        /**
+         * Waits for the message processing thread to terminate.
+         * This should be called after `stop()` to ensure a graceful shutdown.
+         */
+        public void join() {
             try {
-                Thread.sleep(sleepTime);
+                if (thread != null) {
+                    thread.join();
+                }
             } catch (InterruptedException e) {
-                break;
+                log.warn("Interrupted while waiting for message processor to stop.", e);
+                Thread.currentThread().interrupt();
             }
         }
-    }
-
+    
+            private void processOutbox() {
+                long currentBackoff = 1000;
+                final int maxBackoff = 8000;
+                final int baseSleep = 500;
+        
+                while (running) {
+                    if (!processOneOutboxMessageSafely()) {
+                        long sleepTime = currentBackoff + random.nextInt(1000);
+                        currentBackoff = Math.min(currentBackoff * 2, maxBackoff);
+                        try {
+                            Thread.sleep(sleepTime);
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                            break;
+                        }
+                    } else {
+                        currentBackoff = 1000; // Reset backoff on success
+                    }
+                }
+            }
+            
+            private void processInbox() {
+                long currentBackoff = 1000;
+                final int maxBackoff = 8000;
+        
+                while (running) {
+                    if (!processOneInboxMessageSafely()) {
+                        long sleepTime = currentBackoff + random.nextInt(1000);
+                        currentBackoff = Math.min(currentBackoff * 2, maxBackoff);
+                        try {
+                            Thread.sleep(sleepTime);
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                            break;
+                        }
+                    } else {
+                        currentBackoff = 1000; // Reset backoff on success
+                    }
+                }
+            }    
+        private void disconnect() {
+            bulletinBoardStubs.clear();
+            log.info("All RMI connections disconnected.");
+        }
+    
+        @Override
+        public void run() {
+            long currentBackoff = 1000;
+            final int maxBackoff = 8000;
+            final int baseSleep = 500;
+    
+            new Thread(this::processOutbox, "Outbox-Processor-Thread").start();
+            new Thread(this::processInbox, "Inbox-Processor-Thread").start();
+    
+            while (running) {
+                boolean didWork = false;
+    
+                if (!running) break;
+                didWork = processOneConfirmationSafely();
+    
+                long sleepTime;
+                if (didWork) {
+                    sleepTime = baseSleep;
+                    currentBackoff = 1000; // Reset backoff on success
+                } else {
+                    sleepTime = currentBackoff + random.nextInt(1000);
+                    currentBackoff = Math.min(currentBackoff * 2, maxBackoff);
+                }
+    
+                try {
+                    Thread.sleep(sleepTime);
+                } catch (InterruptedException e) {
+                    break;
+                }
+            }
+        }
     private Optional<BulletinBoard> ensureConnected(long requiredIndex) {
         int targetPort = getPortForIndex(requiredIndex);
         String targetHost = "localhost";
@@ -141,17 +182,31 @@ public class InAndOutBox implements Runnable {
         }
     }
 
-    private boolean processOneOutboxMessageSafely() {
-        if (databaseManager == null) {
-            return false;
+    public void sendMessageImmediately(DatabaseManager.PendingMessage pending) {
+        outboxLock.lock();
+        try {
+            processMessage(pending);
+        } finally {
+            outboxLock.unlock();
         }
+    }
+
+    private boolean processOneOutboxMessageSafely() {
+        if (databaseManager == null) return false;
 
         Optional<DatabaseManager.PendingMessage> pendingMessageOpt = databaseManager.getPendingOutboxMessages().stream().findFirst();
-        if (pendingMessageOpt.isEmpty()) {
-            return false;
-        }
-        DatabaseManager.PendingMessage pending = pendingMessageOpt.get();
+        if (pendingMessageOpt.isEmpty()) return false;
 
+        if (!outboxLock.tryLock()) return false;
+
+        try {
+            return processMessage(pendingMessageOpt.get());
+        } finally {
+            outboxLock.unlock();
+        }
+    }
+
+    private boolean processMessage(DatabaseManager.PendingMessage pending) {
         Optional<ChatState> chatOptional = chatCore.getChatStateByRecipientUuid(pending.recipientUuid());
         if (chatOptional.isEmpty()) {
             log.error("Chat state not found for pending message to {}", pending.recipient());
@@ -160,9 +215,8 @@ public class InAndOutBox implements Runnable {
         ChatState chat = chatOptional.get();
 
         Optional<BulletinBoard> bulletinBoardOpt = ensureConnected(chat.sendIdx);
-        if (bulletinBoardOpt.isEmpty()) {
-            return false;
-        }
+        if (bulletinBoardOpt.isEmpty()) return false;
+
         BulletinBoard bulletinBoard = bulletinBoardOpt.get();
 
         try {
@@ -170,20 +224,25 @@ public class InAndOutBox implements Runnable {
             byte[] nextTagBytes = ChatCrypto.makeNewTag();
             String nextTag = ChatCrypto.tagToBase64(nextTagBytes);
 
-            ChatProto.ChatPayload chatPayload = ChatProto.ChatPayload.newBuilder().setMessage(pending.messageText()).setNextIdx(nextIdx).setNextTag(ByteString.copyFrom(nextTagBytes)).build();
+            ChatProto.ChatPayload chatPayload = ChatProto.ChatPayload.newBuilder()
+                    .setMessage(pending.messageText())
+                    .setNextIdx(nextIdx)
+                    .setNextTag(ByteString.copyFrom(nextTagBytes))
+                    .build();
             byte[] payloadBytes = chatPayload.toByteArray();
 
             byte[] encryptedPayload = ChatCrypto.encryptPayloadBytes(payloadBytes, chat.sendKey);
-
             String tagString = Encryption.preimageToTag(chat.sendTag);
 
             log.info("OUTBOX PUSH: Trying to send to {} at idx {} with tag {}", pending.recipient(), chat.sendIdx, tagString);
 
             boolean success = bulletinBoard.add(chat.sendIdx, encryptedPayload, tagString);
+
             if (!success) {
                 log.warn("OUTBOX PUSH FAILED: Server returned false. Will retry later.");
                 return false;
             }
+
             log.info("OUTBOX PUSH SUCCESS: Message for {} sent.", pending.recipient());
 
             chat.sendIdx = nextIdx;
@@ -194,10 +253,9 @@ public class InAndOutBox implements Runnable {
             databaseManager.markMessageAsSentAndUpdateState(pending.id(), chat.recipient, newSendKeyBytes, chat.sendIdx, chat.sendTag);
 
             return true;
-
         } catch (RemoteException e) {
             log.warn("RMI ERROR during outbox push. Server may be offline. Will retry later.", e);
-            bulletinBoardStubs.clear(); // Clear all stubs on error
+            bulletinBoardStubs.clear();
             return false;
         } catch (Exception e) {
             log.error("Failed to process outbox message for {}", pending.recipient(), e);
@@ -205,36 +263,67 @@ public class InAndOutBox implements Runnable {
         }
     }
 
+    public void fetchMessagesImmediately(ChatState chat) {
+        if (!inboxLock.tryLock()) {
+            log.warn("Skipping immediate fetch for {} as another fetch is in progress.", chat.recipient);
+            return;
+        }
+        try {
+            log.info("Starting immediate fetch for active chat: {}", chat.recipient);
+            final int maxMessagesToFetch = 10;
+            int fetchedCount = 0;
+            // Keep fetching as long as we are making progress and within the limit
+            while (fetchedCount < maxMessagesToFetch && fetchAndProcessMessage(chat)) {
+                fetchedCount++;
+                try {
+                    // Small delay to avoid spamming the server
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+            log.info("Finished immediate fetch for {}. Fetched {} messages.", chat.recipient, fetchedCount);
+        } finally {
+            inboxLock.unlock();
+        }
+    }
+
     private boolean processOneInboxMessageSafely() {
-        if (databaseManager == null) {
-            return false;
+        if (databaseManager == null) return false;
+
+        // Try to lock. If busy, another thread is fetching, so we back off.
+        if (!inboxLock.tryLock()) return false;
+
+        try {
+            // Iterate through all active chats and try to fetch one message for each
+            boolean didWork = false;
+            for (ChatState chat : chatCore.getActiveChatsSnapshot()) {
+                if (chat.canReceive() && !chat.isPoisoned()) {
+                    if (fetchAndProcessMessage(chat)) {
+                        didWork = true;
+                    }
+                }
+            }
+            return didWork;
+        } finally {
+            inboxLock.unlock();
         }
+    }
 
-        Optional<ChatState> chatToProcessOpt = chatCore.getActiveChatsSnapshot().stream().filter(chat -> chat.canReceive() && !chat.isPoisoned()).findFirst();
-
-        if (chatToProcessOpt.isEmpty()) {
-            return false;
-        }
-        ChatState chat = chatToProcessOpt.get();
-
+    private boolean fetchAndProcessMessage(ChatState chat) {
         Optional<BulletinBoard> bulletinBoardOpt = ensureConnected(chat.recvIdx);
-        if (bulletinBoardOpt.isEmpty()) {
-            return false;
-        }
-        BulletinBoard bulletinBoard = bulletinBoardOpt.get();
+        if (bulletinBoardOpt.isEmpty()) return false;
 
-        // Store current receive state before it's updated
+        BulletinBoard bulletinBoard = bulletinBoardOpt.get();
         long currentRecvIdx = chat.recvIdx;
         String currentRecvTag = chat.recvTag;
 
         try {
             log.info("INBOX FETCH: Trying to receive for {} at recvIdx={} with tag={}", chat.recipient, currentRecvIdx, currentRecvTag);
-
             Pair pair = bulletinBoard.get(currentRecvIdx, currentRecvTag);
 
-            if (pair == null) {
-                return false;
-            }
+            if (pair == null) return false;
 
             log.info("INBOX FETCH: Message found for {}!", chat.recipient);
 
@@ -252,7 +341,6 @@ public class InAndOutBox implements Runnable {
             chat.recvKey = ChatCrypto.makeNewSecretKey(chat.recvKey);
 
             byte[] newRecvKeyBytes = chat.recvKey.getEncoded();
-            // Save message as UNCONFIRMED, along with the index and tag needed for confirmation
             databaseManager.addReceivedMessageAndUpdateState(chat.recipient, chat.getRecipientUuid(), receivedMessage, currentRecvIdx, pair.tag(), newRecvKeyBytes, chat.recvIdx, chat.recvTag);
 
             chatCore.notifyMessageUpdate();
@@ -260,20 +348,17 @@ public class InAndOutBox implements Runnable {
 
         } catch (RemoteException e) {
             log.warn("RMI ERROR during inbox fetch for {}. Server unavailable. Will retry later.", chat.recipient);
-            bulletinBoardStubs.clear(); // Clear all stubs on error
+            bulletinBoardStubs.clear();
             return false;
         } catch (Exception e) {
             log.error("Error during decryption or processing of received message for {}", chat.recipient, e);
-
             chat.poisonedBackoffUntil = System.currentTimeMillis() + (5 * 60 * 1000);
             log.warn("Poison message detected for chat with {}. Backing off for 5 minutes.", chat.recipient);
-
             return true;
         }
     }
 
     private boolean processOneConfirmationSafely() {
-        // SLEEP for testing
         if (databaseManager == null) {
             return false;
         }
@@ -291,8 +376,7 @@ public class InAndOutBox implements Runnable {
 
         try {
             log.info("INBOX CONFIRM: Trying to confirm receipt for message with tag {}", unconfirmed.recvTag());
-//            boolean success = bulletinBoard.confirm(unconfirmed.recvIdx(), unconfirmed.recvTag());
-            boolean success = true;
+            boolean success = bulletinBoard.confirm(unconfirmed.recvIdx(), unconfirmed.recvTag());
             if (success) {
                 databaseManager.deletePendingConfirmation(unconfirmed.messageId());
                 log.info("INBOX CONFIRM: Successfully confirmed message with tag {}", unconfirmed.recvTag());
