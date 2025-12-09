@@ -2,12 +2,16 @@ package org.example;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import java.rmi.RemoteException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 public class BulletinBoardImpl implements BulletinBoard {
     private static final Logger logger = LoggerFactory.getLogger(BulletinBoardImpl.class);
@@ -19,14 +23,12 @@ public class BulletinBoardImpl implements BulletinBoard {
     private final transient ServerDatabaseManager dbManager;
 
     private volatile BoardGeneration activeBoard;
-    private volatile BoardGeneration drainingBoard; // The old board we are emptying
+    private final CopyOnWriteArrayList<BoardGeneration> drainingBoards = new CopyOnWriteArrayList<>();
+
 
     public BulletinBoardImpl(ServerDatabaseManager dbManager) {
         this.dbManager = dbManager;
 
-
-
-        // Discover all board capacities currently in the database
         List<Integer> capacities = dbManager.getAllBoardCapacities();
 
         if (capacities.isEmpty()) {
@@ -35,40 +37,49 @@ public class BulletinBoardImpl implements BulletinBoard {
             this.activeBoard = new BoardGeneration(initialSize);
             logger.info("No data in DB. Initialized new board size: {}", initialSize);
         } else {
-            // Identify the largest (most recent) capacity
+            // 1. Find the active capacity (the max)
             int activeCapacity = capacities.stream().max(Integer::compare).get();
-            this.activeBoard = new BoardGeneration(activeCapacity);
-            // 3. Load ALL messages and re-index them into the correct BoardGeneration objects
+
+            // 2. Create a temporary map to hold all boards during loading
+            Map<Integer, BoardGeneration> boardsByCapacity = new HashMap<>();
+
+            // 3. Load all messages
             List<ServerDatabaseManager.PersistedMessage> allMessages = dbManager.loadAllMessagesWithCapacity();
 
             for (ServerDatabaseManager.PersistedMessage msg : allMessages) {
-                // Determine which board generation this message belongs to
-                if (msg.boardCapacity() == activeCapacity) {
-                    // Add to the active board
-                    this.activeBoard.loadMessage(msg);
-                } else {
-                    // This is an older, draining message
-                    if (this.drainingBoard == null || this.drainingBoard.capacity != msg.boardCapacity()) {
-                        this.drainingBoard = new BoardGeneration(msg.boardCapacity());
-                        logger.warn("Server restarting mid-drain. Reconstituting draining board size: {}", msg.boardCapacity());
-                    }
-                    this.drainingBoard.loadMessage(msg);
-                }
+                int boardCapacity = msg.boardCapacity();
+
+                // 4. Get or create the correct board for this message
+                BoardGeneration board = boardsByCapacity.computeIfAbsent(boardCapacity, capacity -> {
+                    logger.info("Reconstituting board for capacity: {}", capacity);
+                    return new BoardGeneration(capacity);
+                });
+
+                // 5. Load the message into its board
+                board.loadMessage(msg);
             }
-            logger.info("Server loaded. Active size: {}. Draining size: {}",
-                    this.activeBoard.capacity,
-                    this.drainingBoard == null ? "None" : this.drainingBoard.capacity);
+
+            // 6. Assign active and draining boards from the map
+            this.activeBoard = boardsByCapacity.remove(activeCapacity); // Get and remove the active one
+
+            // All remaining boards in the map are draining boards
+            this.drainingBoards.addAll(boardsByCapacity.values());
+
+            // Logging
+            String drainingSizes = drainingBoards.stream()
+                    .map(b -> String.valueOf(b.capacity))
+                    .collect(Collectors.joining(", "));
+            logger.info("Server loaded. Active size: {}. Draining sizes: [{}]",
+                    this.activeBoard.capacity, drainingSizes.isEmpty() ? "None" : drainingSizes);
         }
-
-
     }
 
     @Override
     public boolean add(long idx, byte[] value, String tag) throws RemoteException {
-        // 1. Check if we need to resize before adding
-        checkAndResize();
-
-        // 2. Always write to the ACTIVE (new) board
+        // Optimistic check to avoid synchronization on every add
+        if (activeBoard.isOverloaded()) {
+            checkAndResize();
+        }
         return activeBoard.add(idx, value, tag, dbManager);
     }
 
@@ -76,17 +87,16 @@ public class BulletinBoardImpl implements BulletinBoard {
     public Pair get(long idx, String preimage) throws RemoteException {
         String tag = Encryption.preimageToTag(preimage);
 
-        // 1. Check the DRAINING board first (if it exists)
-        BoardGeneration oldBoard = this.drainingBoard;
-        if (oldBoard != null) {
+        // 1. Check the DRAINING boards first
+        for (BoardGeneration oldBoard : drainingBoards) {
             Pair result = oldBoard.get(idx, tag, dbManager);
             if (result != null) {
-                logger.info("GET: Found in draining board. Count remaining: {}", oldBoard.getTotalCount());
+                logger.info("GET: Found in draining board size {}. Count remaining: {}", oldBoard.capacity, oldBoard.getTotalCount());
 
                 // cleanup check
                 if (oldBoard.getTotalCount() == 0) {
-                    logger.info("DRAINING COMPLETE: Old board is empty. GC will reclaim it.");
-                    this.drainingBoard = null;
+                    logger.info("DRAINING COMPLETE: Old board size {} is empty. Removing it.", oldBoard.capacity);
+                    drainingBoards.remove(oldBoard); // Safe with CopyOnWriteArrayList
                 }
                 return result;
             }
@@ -97,23 +107,13 @@ public class BulletinBoardImpl implements BulletinBoard {
     }
 
     private synchronized void checkAndResize() {
-
         if (activeBoard.isOverloaded()) {
-            if (drainingBoard != null) {
-                // We are already draining one board.
-                // Option A: Block and force merge (slow)
-                // Option B: Reject resize (dangerous)
-                // Option C: Just log warning. We shouldn't resize again until the first drain is done. this is wat we do here
-                logger.warn("Load high, but still draining previous board. Skipping resize.");
-                return;
-            }
-
             logger.info("RESIZING: Board full ({} items). expanding...", activeBoard.getTotalCount());
 
+            // The current active board becomes a new draining board.
+            this.drainingBoards.add(this.activeBoard);
 
-            this.drainingBoard = this.activeBoard;
-
-
+            // Create the new active board.
             int newSize = this.activeBoard.capacity * 2;
             this.activeBoard = new BoardGeneration(newSize);
 
