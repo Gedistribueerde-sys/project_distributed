@@ -7,6 +7,9 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class Server {
     static void main(String[] args) throws Exception {
@@ -26,10 +29,22 @@ public class Server {
         registry.rebind("BulletinBoard", stub);
 
         log.info("Server running on port: {}", port);
+
+        // --- Orphaned Message Cleanup Task ---
+        ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread t = new Thread(r, "Orphaned-Message-Cleaner-Thread");
+            t.setDaemon(true);
+            return t;
+        });
+        scheduler.scheduleAtFixedRate(bulletinBoard::cleanUpOrphanedMessages, 1, 1, TimeUnit.MINUTES);
+        log.info("Orphaned message cleanup task scheduled to run every minute.");
+
+
         CountDownLatch latch = new CountDownLatch(1);
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             try {
+                scheduler.shutdown();
                 UnicastRemoteObject.unexportObject(bulletinBoard, true);
                 log.info("Server shut down gracefully.");
             } catch (Exception e) {

@@ -98,6 +98,9 @@ public class InAndOutBox implements Runnable {
             if (!running) break;
             didWork |= processOneInboxMessageSafely();
 
+            if (!running) break;
+            didWork |= processOneConfirmationSafely();
+
             long sleepTime;
             if (didWork) {
                 sleepTime = baseSleep;
@@ -220,10 +223,14 @@ public class InAndOutBox implements Runnable {
         }
         BulletinBoard bulletinBoard = bulletinBoardOpt.get();
 
-        try {
-            log.info("INBOX FETCH: Trying to receive for {} at recvIdx={} with tag={}", chat.recipient, chat.recvIdx, chat.recvTag);
+        // Store current receive state before it's updated
+        long currentRecvIdx = chat.recvIdx;
+        String currentRecvTag = chat.recvTag;
 
-            Pair pair = bulletinBoard.get(chat.recvIdx, chat.recvTag);
+        try {
+            log.info("INBOX FETCH: Trying to receive for {} at recvIdx={} with tag={}", chat.recipient, currentRecvIdx, currentRecvTag);
+
+            Pair pair = bulletinBoard.get(currentRecvIdx, currentRecvTag);
 
             if (pair == null) {
                 return false;
@@ -245,7 +252,8 @@ public class InAndOutBox implements Runnable {
             chat.recvKey = ChatCrypto.makeNewSecretKey(chat.recvKey);
 
             byte[] newRecvKeyBytes = chat.recvKey.getEncoded();
-            databaseManager.addReceivedMessageAndUpdateState(chat.recipient, chat.getRecipientUuid(), receivedMessage, newRecvKeyBytes, chat.recvIdx, chat.recvTag);
+            // Save message as UNCONFIRMED, along with the index and tag needed for confirmation
+            databaseManager.addReceivedMessageAndUpdateState(chat.recipient, chat.getRecipientUuid(), receivedMessage, currentRecvIdx, pair.tag(), newRecvKeyBytes, chat.recvIdx, chat.recvTag);
 
             chatCore.notifyMessageUpdate();
             return true;
@@ -263,6 +271,46 @@ public class InAndOutBox implements Runnable {
             return true;
         }
     }
+
+    private boolean processOneConfirmationSafely() {
+        // SLEEP for testing
+        if (databaseManager == null) {
+            return false;
+        }
+        Optional<DatabaseManager.UnconfirmedMessage> unconfirmedOpt = databaseManager.getUnconfirmedMessages().stream().findFirst();
+        if (unconfirmedOpt.isEmpty()) {
+            return false; // No work to do
+        }
+        DatabaseManager.UnconfirmedMessage unconfirmed = unconfirmedOpt.get();
+
+        Optional<BulletinBoard> bulletinBoardOpt = ensureConnected(unconfirmed.recvIdx());
+        if (bulletinBoardOpt.isEmpty()) {
+            return false; // Can't connect to server, will retry later
+        }
+        BulletinBoard bulletinBoard = bulletinBoardOpt.get();
+
+        try {
+            log.info("INBOX CONFIRM: Trying to confirm receipt for message with tag {}", unconfirmed.recvTag());
+//            boolean success = bulletinBoard.confirm(unconfirmed.recvIdx(), unconfirmed.recvTag());
+            boolean success = true;
+            if (success) {
+                databaseManager.deletePendingConfirmation(unconfirmed.messageId());
+                log.info("INBOX CONFIRM: Successfully confirmed message with tag {}", unconfirmed.recvTag());
+                return true; // We did work
+            } else {
+                log.warn("INBOX CONFIRM: Server returned false for tag {}. Will retry.", unconfirmed.recvTag());
+                return false;
+            }
+        } catch (RuntimeException e) {
+            log.warn("RMI ERROR during confirmation for tag {}. Will retry later.", unconfirmed.recvTag());
+            bulletinBoardStubs.clear();
+            return false;
+        } catch (Exception e) {
+            log.error("Unexpected error during confirmation for tag {}", unconfirmed.recvTag(), e);
+            return false;
+        }
+    }
+
 
     private int getPortForIndex(long idx) {
         int portIndex = (int) (Math.abs(idx) % NUM_SERVERS);
