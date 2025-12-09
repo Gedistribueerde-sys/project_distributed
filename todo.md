@@ -1,8 +1,5 @@
 # TODO
 
-## MEDIUM PRIORITY
-- [ ] Make sure active chats are polled at constant rate and sends are instantly.
-
 ## LOW PRIORITY
 - [ ] Adding `recoverability` to the client-side: recovery mechanisms to handle corrupted messages.
 - [ ] Implementing a `denial-of-service` (DoS) protection mechanism to prevent abuse of the bulletin board service.
