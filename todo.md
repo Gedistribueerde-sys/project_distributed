@@ -12,4 +12,3 @@
 - [ ] Add group chat functionality.
 - [ ] Emoji support.
 - [ ] File sharing capabilities.
-- 

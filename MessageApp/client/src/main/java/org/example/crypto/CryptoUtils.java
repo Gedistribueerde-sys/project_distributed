@@ -69,10 +69,10 @@ public final class CryptoUtils {
     }
 
     /**
-     * Helper to create AAD (Additional Authenticated Data) from username and recipient.
+     * Helper to create AAD (Additional Authenticated Data) from username and recipient's UUID.
      */
-    public static byte[] makeAAD(String username, String recipient) {
-        return (username + ":" + recipient).getBytes(StandardCharsets.UTF_8);
+    public static byte[] makeAAD(String username, String recipientId) {
+        return (username + ":" + recipientId).getBytes(StandardCharsets.UTF_8);
     }
 }
 

@@ -286,7 +286,7 @@ public class ChatCore {
 
         // Update database first (transactional)
         if (databaseManager != null) {
-            databaseManager.renameChat(chat.getRecipientUuid(), oldName, newName);
+            databaseManager.renameChat(chat.getRecipientUuid(), newName);
         }
 
         // Update in-memory state

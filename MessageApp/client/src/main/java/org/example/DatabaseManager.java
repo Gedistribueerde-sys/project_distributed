@@ -115,7 +115,7 @@ public class DatabaseManager {
                 "recipient_name=excluded.recipient_name, send_key=excluded.send_key, receive_key=excluded.receive_key, " +
                 "send_next_idx=excluded.send_next_idx, receive_next_idx=excluded.receive_next_idx, " +
                 "send_tag=excluded.send_tag, recv_tag=excluded.recv_tag";
-        byte[] aad = CryptoUtils.makeAAD(username, recipient);
+        byte[] aad = CryptoUtils.makeAAD(username, recipientUuid);
         try (Connection conn = DriverManager.getConnection(url); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, recipientUuid);
             ps.setString(2, recipient);
@@ -133,84 +133,37 @@ public class DatabaseManager {
         }
     }
 
-    public void renameChat(String recipientUuid, String oldName, String newName) {
-        log.info("Renaming chat {} from '{}' to '{}'", recipientUuid, oldName, newName);
-        byte[] oldAad = CryptoUtils.makeAAD(username, oldName);
-        byte[] newAad = CryptoUtils.makeAAD(username, newName);
+    public void renameChat(String recipientUuid, String newName) {
+        log.info("Renaming chat {} to '{}'", recipientUuid, newName);
+        String updateChatSql = "UPDATE chat_sessions SET recipient_name = ? WHERE recipient_uuid = ?";
 
-        String selectChatSql = "SELECT send_key, receive_key FROM chat_sessions WHERE recipient_uuid = ?";
-        String updateChatSql = "UPDATE chat_sessions SET recipient_name = ?, send_key = ?, receive_key = ? WHERE recipient_uuid = ?";
-        String selectMsgsSql = "SELECT id, content FROM messages WHERE recipient_uuid = ?";
-        String updateMsgSql = "UPDATE messages SET content = ? WHERE id = ?";
-
-        try (Connection conn = DriverManager.getConnection(url)) {
-            conn.setAutoCommit(false);
-            try {
-                byte[] rawSendKey = null;
-                byte[] rawRecvKey = null;
-                try (PreparedStatement ps = conn.prepareStatement(selectChatSql)) {
-                    ps.setString(1, recipientUuid);
-                    try (ResultSet rs = ps.executeQuery()) {
-                        if (rs.next()) {
-                            byte[] encSend = rs.getBytes("send_key");
-                            byte[] encRecv = rs.getBytes("receive_key");
-                            if (encSend != null) rawSendKey = CryptoUtils.decrypt(encSend, dbKey, oldAad);
-                            if (encRecv != null) rawRecvKey = CryptoUtils.decrypt(encRecv, dbKey, oldAad);
-                        } else {
-                            throw new SQLException("Chat not found for UUID: " + recipientUuid);
-                        }
-                    }
-                }
-                try (PreparedStatement ps = conn.prepareStatement(updateChatSql)) {
-                    ps.setString(1, newName);
-                    ps.setBytes(2, rawSendKey == null ? null : CryptoUtils.encrypt(rawSendKey, dbKey, newAad));
-                    ps.setBytes(3, rawRecvKey == null ? null : CryptoUtils.encrypt(rawRecvKey, dbKey, newAad));
-                    ps.setString(4, recipientUuid);
-                    ps.executeUpdate();
-                }
-                try (PreparedStatement psSelect = conn.prepareStatement(selectMsgsSql);
-                     PreparedStatement psUpdate = conn.prepareStatement(updateMsgSql)) {
-                    psSelect.setString(1, recipientUuid);
-                    try (ResultSet rs = psSelect.executeQuery()) {
-                        while (rs.next()) {
-                            long id = rs.getLong("id");
-                            byte[] encContent = rs.getBytes("content");
-                            byte[] rawContent = CryptoUtils.decrypt(encContent, dbKey, oldAad);
-                            byte[] newEncContent = CryptoUtils.encrypt(rawContent, dbKey, newAad);
-                            psUpdate.setBytes(1, newEncContent);
-                            psUpdate.setLong(2, id);
-                            psUpdate.addBatch();
-                        }
-                    }
-                    psUpdate.executeBatch();
-                }
-                conn.commit();
-                log.info("Chat renamed successfully.");
-            } catch (Exception e) {
-                conn.rollback();
-                throw e;
-            }
+        try (Connection conn = DriverManager.getConnection(url); PreparedStatement ps = conn.prepareStatement(updateChatSql)) {
+            ps.setString(1, newName);
+            ps.setString(2, recipientUuid);
+            ps.executeUpdate();
+            log.info("Chat renamed successfully.");
         } catch (Exception e) {
             log.error("Failed to rename chat", e);
             throw new RuntimeException("Failed to rename chat", e);
         }
     }
 
-    public PersistedChatState getChatState(String recipient) {
-        String sql = "SELECT * FROM chat_sessions WHERE recipient_name = ?";
-        byte[] aad = CryptoUtils.makeAAD(username, recipient);
+    public PersistedChatState getChatStateByUuid(String recipientUuid) {
+        String sql = "SELECT * FROM chat_sessions WHERE recipient_uuid = ?";
+        byte[] aad = CryptoUtils.makeAAD(username, recipientUuid);
         try (Connection conn = DriverManager.getConnection(url); PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, recipient);
+            ps.setString(1, recipientUuid);
             try (ResultSet rs = ps.executeQuery()) {
                 if (!rs.next()) return null;
+                String recipientName = rs.getString("recipient_name");
                 byte[] encSend = rs.getBytes("send_key");
                 byte[] encRecv = rs.getBytes("receive_key");
                 byte[] rawSend = encSend == null ? null : CryptoUtils.decrypt(encSend, dbKey, aad);
                 byte[] rawRecv = encRecv == null ? null : CryptoUtils.decrypt(encRecv, dbKey, aad);
-                return new PersistedChatState(rs.getString("recipient_name"), rs.getString("recipient_uuid"), rawSend, rawRecv, rs.getLong("send_next_idx"), rs.getLong("receive_next_idx"), rs.getString("send_tag"), rs.getString("recv_tag"));
+                return new PersistedChatState(recipientName, rs.getString("recipient_uuid"), rawSend, rawRecv, rs.getLong("send_next_idx"), rs.getLong("receive_next_idx"), rs.getString("send_tag"), rs.getString("recv_tag"));
             }
         } catch (Exception e) {
-            log.error("Failed to get chat state for {}", recipient, e);
+            log.error("Failed to get chat state for {}", recipientUuid, e);
             throw new RuntimeException(e);
         }
     }
@@ -221,12 +174,13 @@ public class DatabaseManager {
         try (Connection conn = DriverManager.getConnection(url); PreparedStatement ps = conn.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
                 String recipient = rs.getString("recipient_name");
+                String recipientUuid = rs.getString("recipient_uuid");
                 byte[] encSend = rs.getBytes("send_key");
                 byte[] encRecv = rs.getBytes("receive_key");
-                byte[] aad = CryptoUtils.makeAAD(username, recipient);
+                byte[] aad = CryptoUtils.makeAAD(username, recipientUuid);
                 byte[] rawSend = encSend == null ? null : CryptoUtils.decrypt(encSend, dbKey, aad);
                 byte[] rawRecv = encRecv == null ? null : CryptoUtils.decrypt(encRecv, dbKey, aad);
-                out.add(new PersistedChatState(recipient, rs.getString("recipient_uuid"), rawSend, rawRecv, rs.getLong("send_next_idx"), rs.getLong("receive_next_idx"), rs.getString("send_tag"), rs.getString("recv_tag")));
+                out.add(new PersistedChatState(recipient, recipientUuid, rawSend, rawRecv, rs.getLong("send_next_idx"), rs.getLong("receive_next_idx"), rs.getString("send_tag"), rs.getString("recv_tag")));
             }
             log.info("Loaded {} chat state(s) from database", out.size());
         } catch (Exception e) {
@@ -238,7 +192,7 @@ public class DatabaseManager {
 
     public void addMessage(String recipient, String recipientUuid, String messageText, boolean isSent, boolean isServerSent) {
         String sql = "INSERT INTO messages(recipient_uuid, timestamp, is_sent, is_server_sent, content) VALUES(?,?,?,?,?)";
-        byte[] aad = CryptoUtils.makeAAD(username, recipient);
+        byte[] aad = CryptoUtils.makeAAD(username, recipientUuid);
         try (Connection conn = DriverManager.getConnection(url); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, recipientUuid);
             ps.setLong(2, System.currentTimeMillis());
@@ -255,7 +209,7 @@ public class DatabaseManager {
 
     public List<Message> loadMessages(String recipient, String recipientUuid) {
         String sql = "SELECT * FROM messages WHERE recipient_uuid = ? ORDER BY timestamp ";
-        byte[] aad = CryptoUtils.makeAAD(username, recipient);
+        byte[] aad = CryptoUtils.makeAAD(username, recipientUuid);
         List<Message> messages = new ArrayList<>();
         try (Connection conn = DriverManager.getConnection(url); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, recipientUuid);
@@ -292,7 +246,7 @@ public class DatabaseManager {
                 String recipient = rs.getString("recipient_name");
                 String recipientUuid = rs.getString("recipient_uuid");
                 byte[] encContent = rs.getBytes("content");
-                byte[] aad = CryptoUtils.makeAAD(username, recipient);
+                byte[] aad = CryptoUtils.makeAAD(username, recipientUuid);
                 byte[] decContent = CryptoUtils.decrypt(encContent, dbKey, aad);
                 String content = new String(decContent, StandardCharsets.UTF_8);
                 pending.add(new PendingMessage(id, recipient, recipientUuid, content));
@@ -306,17 +260,33 @@ public class DatabaseManager {
 
     public void markMessageAsSentAndUpdateState(long messageId, String recipient, byte[] newSendKey, long newSendIdx, String newSendTag) {
         String markSentSql = "UPDATE messages SET is_server_sent = 1 WHERE id = ?";
-        String updateStateSql = "UPDATE chat_sessions SET send_key = ?, send_next_idx = ?, send_tag = ? WHERE recipient_name = ?";
-        byte[] aad = CryptoUtils.makeAAD(username, recipient);
+        String updateStateSql = "UPDATE chat_sessions SET send_key = ?, send_next_idx = ?, send_tag = ? WHERE recipient_uuid = ?";
+        String getUuidSql = "SELECT recipient_uuid FROM chat_sessions WHERE recipient_name = ?";
+
         Connection conn = null;
         try {
             conn = DriverManager.getConnection(url);
             conn.setAutoCommit(false);
+
+            String recipientUuid;
+            try (PreparedStatement ps = conn.prepareStatement(getUuidSql)) {
+                ps.setString(1, recipient);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        recipientUuid = rs.getString("recipient_uuid");
+                    } else {
+                        throw new SQLException("Recipient not found: " + recipient);
+                    }
+                }
+            }
+
+            byte[] aad = CryptoUtils.makeAAD(username, recipientUuid);
+
             try (PreparedStatement ps = conn.prepareStatement(markSentSql)) {
                 ps.setLong(1, messageId);
                 ps.executeUpdate();
             }
-            commitMessageState(newSendKey, newSendIdx, newSendTag, updateStateSql, aad, conn, recipient);
+            commitMessageState(newSendKey, newSendIdx, newSendTag, updateStateSql, aad, conn, recipientUuid);
             log.debug("Transactionally updated state for sent message {}", messageId);
         } catch (Exception e) {
             log.error("Transaction failed for sent message {}. Rolling back.", messageId, e);
@@ -354,7 +324,7 @@ public class DatabaseManager {
         String addMsgSql = "INSERT INTO messages(recipient_uuid, timestamp, is_sent, content) VALUES(?,?,?,?)";
         String addConfirmSql = "INSERT INTO pending_confirmations(message_id, recv_idx, recv_tag) VALUES(?,?,?)";
         String updateStateSql = "UPDATE chat_sessions SET receive_key = ?, receive_next_idx = ?, recv_tag = ? WHERE recipient_uuid = ?";
-        byte[] aad = CryptoUtils.makeAAD(username, recipient);
+        byte[] aad = CryptoUtils.makeAAD(username, recipientUuid);
         Connection conn = null;
         try {
             conn = DriverManager.getConnection(url);
