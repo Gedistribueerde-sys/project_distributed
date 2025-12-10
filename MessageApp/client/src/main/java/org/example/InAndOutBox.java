@@ -356,6 +356,9 @@ public class InAndOutBox implements Runnable {
 
             databaseManager.markMessageAsSentAndUpdateState(pending.id(), chat.recipient, nextKeyBytes, chat.sendIdx, chat.sendTag);
 
+            // Notify UI to refresh and update the message status icon from pending to sent
+            chatCore.notifyMessageUpdate();
+
             return true;
         } catch (RemoteException e) {
             log.warn("RMI ERROR during outbox push. Server may be offline. Will retry later.", e);
