@@ -4,7 +4,10 @@
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.layout.VBox?>
+<?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Region?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.image.ImageView?>
 
 <VBox xmlns="http://javafx.com/javafx/17"
       xmlns:fx="http://javafx.com/fxml/1"
@@ -15,29 +18,40 @@
         <Insets top="48" right="48" bottom="48" left="48"/>
     </padding>
 
-    <!-- App Logo/Icon -->
-    <Label text="💬" style="-fx-font-size: 72px;"/>
+    <!-- App Icon -->
+    <ImageView fx:id="appIcon" fitHeight="64" fitWidth="64" preserveRatio="true"/>
 
     <!-- App Name -->
     <VBox alignment="CENTER" spacing="8">
-        <Label text="SecureChat" styleClass="title-label" style="-fx-font-size: 32px;"/>
-        <Label text="End-to-end encrypted messaging" styleClass="hint-label" style="-fx-font-size: 14px;"/>
+        <Label text="SecureChat" styleClass="app-title"/>
+        <Label text="End-to-end encrypted messaging" styleClass="hint-label"/>
     </VBox>
 
     <Region prefHeight="32"/>
 
     <!-- Action Buttons -->
     <VBox spacing="12" alignment="CENTER" maxWidth="280">
-        <Button text="Sign In" onAction="#handleLoginButtonAction"
-                maxWidth="Infinity" prefHeight="48"/>
-        <Button text="Create Account" onAction="#handleRegisterButtonAction"
-                maxWidth="Infinity" prefHeight="48"
-                style="-fx-background-color: transparent; -fx-border-color: #5865F2; -fx-border-width: 2; -fx-border-radius: 6; -fx-text-fill: #5865F2;"/>
+        <Button onAction="#handleLoginButtonAction"
+                maxWidth="Infinity" prefHeight="48" styleClass="primary-button">
+            <graphic>
+                <ImageView fx:id="loginIcon" fitHeight="20" fitWidth="20" preserveRatio="true"/>
+            </graphic>
+            <text>Sign In</text>
+        </Button>
+        <Button onAction="#handleRegisterButtonAction"
+                maxWidth="Infinity" prefHeight="48" styleClass="secondary-button">
+            <graphic>
+                <ImageView fx:id="registerIcon" fitHeight="20" fitWidth="20" preserveRatio="true"/>
+            </graphic>
+            <text>Create Account</text>
+        </Button>
     </VBox>
 
     <Region VBox.vgrow="ALWAYS"/>
 
     <!-- Footer -->
-    <Label text="🔒 Your messages are secure" styleClass="hint-label"/>
+    <HBox alignment="CENTER" spacing="8">
+        <ImageView fx:id="secureIcon" fitHeight="14" fitWidth="14" preserveRatio="true"/>
+        <Label text="Your messages are secure" styleClass="hint-label"/>
+    </HBox>
 </VBox>
-

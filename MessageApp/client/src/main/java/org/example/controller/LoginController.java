@@ -5,6 +5,8 @@ import javafx.fxml.FXML;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import org.example.GUI.GUI;
 
 public class LoginController {
@@ -18,6 +20,15 @@ public class LoginController {
     @FXML
     private Label statusLabel;
 
+    @FXML
+    private ImageView pageIcon;
+
+    @FXML
+    private ImageView userFieldIcon;
+
+    @FXML
+    private ImageView keyFieldIcon;
+
     private ChatCore chatCore;
     private GUI gui;
 
@@ -27,6 +38,36 @@ public class LoginController {
 
     public void setGui(GUI gui) {
         this.gui = gui;
+        updateIcons();
+    }
+
+    @FXML
+    public void initialize() {
+    }
+
+    /**
+     * Updates icons based on the current theme.
+     */
+    private void updateIcons() {
+        if (gui == null) return;
+        String theme = gui.isDarkTheme() ? "dark" : "light";
+        String themedPath = "/org/example/icons/" + theme + "/";
+        String colorfulPath = "/org/example/icons/";
+
+        // User icon is colorful, works on any background
+        loadIcon(pageIcon, colorfulPath + "user-large.png");
+        loadIcon(userFieldIcon, colorfulPath + "user.png");
+        loadIcon(keyFieldIcon, themedPath + "key.png");
+    }
+
+    private void loadIcon(ImageView imageView, String path) {
+        if (imageView != null) {
+            try {
+                imageView.setImage(new Image(getClass().getResourceAsStream(path)));
+            } catch (Exception e) {
+                // Icon loading failed, leave empty
+            }
+        }
     }
 
     @FXML

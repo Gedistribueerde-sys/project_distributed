@@ -3,11 +3,11 @@ package org.example.controller;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.stage.Stage;
 import javafx.scene.layout.HBox;
-import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
-import javafx.geometry.Pos;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.stage.Modality;
@@ -43,6 +43,14 @@ public class ChatController {
     private Label recipientLabel;
     @FXML
     private Label connectionStatusLabel;
+    @FXML
+    private ImageView userIcon;
+    @FXML
+    private ImageView themeIcon;
+    @FXML
+    private ImageView logoutIcon;
+    @FXML
+    private ImageView sendIcon;
 
 
     private ChatCore chatCore;
@@ -148,10 +156,12 @@ public class ChatController {
     }
 
     public void setup() {
-        userLabel.setText("Logged in as: " + chatCore.getCurrentUser());
+        userLabel.setText(chatCore.getCurrentUser());
         // set the custom cell factory now that controller/current user is available
         messagesView.setCellFactory(lv -> new MessageCell());
         updateChatList();
+        // Load icons for current theme
+        updateIcons();
         // register the UI callback in the chatcore/processor
 
         chatCore.setOnMessageUpdateCallback(() -> { // method call to chatcore
@@ -161,6 +171,29 @@ public class ChatController {
                 refreshMessagesView(selectedIndex);
             }
         });
+    }
+
+    /**
+     * Updates icons based on the current theme.
+     */
+    public void updateIcons() {
+        String theme = gui.isDarkTheme() ? "dark" : "light";
+        String themedPath = "/org/example/icons/" + theme + "/";
+        String colorfulPath = "/org/example/icons/";
+        
+        // User icon is colorful, works on any background
+        if (userIcon != null) {
+            userIcon.setImage(new Image(getClass().getResourceAsStream(colorfulPath + "user.png")));
+        }
+        if (themeIcon != null) {
+            themeIcon.setImage(new Image(getClass().getResourceAsStream(themedPath + "toggle-theme.png")));
+        }
+        if (logoutIcon != null) {
+            logoutIcon.setImage(new Image(getClass().getResourceAsStream(themedPath + "logout.png")));
+        }
+        if (sendIcon != null) {
+            sendIcon.setImage(new Image(getClass().getResourceAsStream(themedPath + "send.png")));
+        }
     }
 
     @FXML
@@ -189,6 +222,7 @@ public class ChatController {
     @FXML
     private void handleThemeToggle() {
         gui.toggleTheme();
+        updateIcons();
     }
 
     private void refreshMessagesView(int selectedIndex) {

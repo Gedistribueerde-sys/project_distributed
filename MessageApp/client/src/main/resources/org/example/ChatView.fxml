@@ -6,10 +6,13 @@
 <?import javafx.scene.control.ListView?>
 <?import javafx.scene.control.SplitPane?>
 <?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.Tooltip?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.control.Separator?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.image.ImageView?>
 
 <SplitPane fx:id="splitPane" dividerPositions="0.28" prefHeight="650.0" prefWidth="1000.0"
            stylesheets="@styles.css"
@@ -20,9 +23,12 @@
         <VBox fx:id="leftBox" prefWidth="280.0" styleClass="chat-list-pane" spacing="0">
             <children>
                 <!-- Header -->
-                <HBox alignment="CENTER_LEFT" spacing="10" style="-fx-padding: 16;">
+                <HBox alignment="CENTER_LEFT" spacing="10" styleClass="sidebar-header">
+                    <padding>
+                        <Insets top="16" right="16" bottom="16" left="16"/>
+                    </padding>
                     <children>
-                        <Label styleClass="title-label" text="💬 Chats"/>
+                        <Label styleClass="sidebar-title" text="Chats"/>
                         <Region HBox.hgrow="ALWAYS"/>
                     </children>
                 </HBox>
@@ -40,10 +46,29 @@
                 <!-- Top Bar with User Info -->
                 <HBox alignment="CENTER_LEFT" styleClass="top-bar" spacing="12">
                     <children>
-                        <Label fx:id="userLabel" styleClass="user-label" text="Logged in as: "/>
+                        <HBox alignment="CENTER_LEFT" spacing="8" styleClass="user-info-box">
+                            <ImageView fx:id="userIcon" fitHeight="18" fitWidth="18" preserveRatio="true"/>
+                            <Label fx:id="userLabel" styleClass="user-label"/>
+                        </HBox>
                         <Region HBox.hgrow="ALWAYS"/>
-                        <Button fx:id="themeToggleButton" onAction="#handleThemeToggle" text="🌓"/>
-                        <Button fx:id="logoutButton" onAction="#handleLogout" text="Logout"/>
+                        <Button fx:id="themeToggleButton" onAction="#handleThemeToggle"
+                                styleClass="theme-toggle-button">
+                            <graphic>
+                                <ImageView fx:id="themeIcon" fitHeight="20" fitWidth="20" preserveRatio="true"/>
+                            </graphic>
+                            <tooltip>
+                                <Tooltip text="Toggle theme"/>
+                            </tooltip>
+                        </Button>
+                        <Button fx:id="logoutButton" onAction="#handleLogout"
+                                styleClass="logout-button" text="Logout">
+                            <graphic>
+                                <ImageView fx:id="logoutIcon" fitHeight="16" fitWidth="16" preserveRatio="true"/>
+                            </graphic>
+                            <tooltip>
+                                <Tooltip text="Sign out"/>
+                            </tooltip>
+                        </Button>
                     </children>
                 </HBox>
 
@@ -53,9 +78,9 @@
                         <Insets bottom="12.0" left="16.0" right="16.0" top="12.0"/>
                     </padding>
                     <children>
-                        <Label fx:id="recipientLabel" styleClass="recipient-label" text=""/>
+                        <Label fx:id="recipientLabel" styleClass="recipient-label"/>
                         <Region HBox.hgrow="ALWAYS"/>
-                        <Label fx:id="connectionStatusLabel" styleClass="connection-status-label" text=""/>
+                        <Label fx:id="connectionStatusLabel" styleClass="connection-status-label"/>
                     </children>
                 </HBox>
 
@@ -71,11 +96,17 @@
                         <TextField fx:id="messageField" onAction="#handleSend"
                                    promptText="Type a message..."
                                    styleClass="message-field" HBox.hgrow="ALWAYS"/>
-                        <Button fx:id="sendButton" text="Send" onAction="#handleSend"/>
+                        <Button fx:id="sendButton" onAction="#handleSend" styleClass="send-button">
+                            <graphic>
+                                <ImageView fx:id="sendIcon" fitHeight="20" fitWidth="20" preserveRatio="true"/>
+                            </graphic>
+                            <tooltip>
+                                <Tooltip text="Send message"/>
+                            </tooltip>
+                        </Button>
                     </children>
                 </HBox>
             </children>
         </VBox>
     </items>
 </SplitPane>
-

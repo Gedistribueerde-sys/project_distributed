@@ -6,7 +6,10 @@
 <?import javafx.scene.control.PasswordField?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.VBox?>
+<?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Region?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.image.ImageView?>
 
 <VBox xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="org.example.controller.RegisterController"
@@ -18,8 +21,8 @@
     <children>
         <!-- Header -->
         <VBox alignment="CENTER" spacing="8">
-            <Label text="✨" style="-fx-font-size: 48px;"/>
-            <Label text="Create Account" styleClass="title-label" style="-fx-font-size: 24px;"/>
+            <ImageView fx:id="pageIcon" fitHeight="48" fitWidth="48" preserveRatio="true"/>
+            <Label text="Create Account" styleClass="page-title"/>
             <Label text="Join SecureChat today" styleClass="hint-label"/>
         </VBox>
 
@@ -27,25 +30,37 @@
 
         <!-- Form Fields -->
         <VBox spacing="12" maxWidth="300">
-            <TextField fx:id="usernameField" promptText="Choose a username" prefHeight="44"/>
-            <PasswordField fx:id="passwordField" promptText="Create password" prefHeight="44"/>
-            <PasswordField fx:id="confirmPasswordField" onAction="#handleRegister"
-                           promptText="Confirm password" prefHeight="44"/>
+            <HBox alignment="CENTER_LEFT" spacing="8" styleClass="input-with-icon">
+                <ImageView fx:id="userFieldIcon" fitHeight="18" fitWidth="18" preserveRatio="true"/>
+                <TextField fx:id="usernameField" promptText="Choose a username" prefHeight="44" HBox.hgrow="ALWAYS"/>
+            </HBox>
+            <HBox alignment="CENTER_LEFT" spacing="8" styleClass="input-with-icon">
+                <ImageView fx:id="keyFieldIcon" fitHeight="18" fitWidth="18" preserveRatio="true"/>
+                <PasswordField fx:id="passwordField" promptText="Create password" prefHeight="44" HBox.hgrow="ALWAYS"/>
+            </HBox>
+            <HBox alignment="CENTER_LEFT" spacing="8" styleClass="input-with-icon">
+                <ImageView fx:id="confirmKeyIcon" fitHeight="18" fitWidth="18" preserveRatio="true"/>
+                <PasswordField fx:id="confirmPasswordField" onAction="#handleRegister"
+                               promptText="Confirm password" prefHeight="44" HBox.hgrow="ALWAYS"/>
+            </HBox>
         </VBox>
 
         <Region prefHeight="8"/>
 
         <!-- Buttons -->
         <VBox spacing="12" maxWidth="300">
-            <Button fx:id="registerButton" onAction="#handleRegister" text="Create Account"
-                    maxWidth="Infinity" prefHeight="44"/>
-            <Button fx:id="backButton" onAction="#handleBackButtonAction" text="← Back"
-                    maxWidth="Infinity" prefHeight="40"
-                    style="-fx-background-color: transparent; -fx-text-fill: #5C6370;"/>
+            <Button fx:id="registerButton" onAction="#handleRegister"
+                    maxWidth="Infinity" prefHeight="44" styleClass="primary-button">
+                <graphic>
+                    <ImageView fx:id="addUserIcon" fitHeight="18" fitWidth="18" preserveRatio="true"/>
+                </graphic>
+                <text>Create Account</text>
+            </Button>
+            <Button fx:id="backButton" onAction="#handleBackButtonAction" text="Back"
+                    maxWidth="Infinity" prefHeight="40" styleClass="text-button"/>
         </VBox>
 
         <!-- Status -->
-        <Label fx:id="statusLabel" styleClass="hint-label" style="-fx-text-fill: #F04747;" wrapText="true"/>
+        <Label fx:id="statusLabel" styleClass="error-label" wrapText="true"/>
     </children>
 </VBox>
-

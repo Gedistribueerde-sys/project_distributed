@@ -5,6 +5,9 @@ import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
+import javafx.scene.control.Tooltip;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.StackPane;
@@ -21,7 +24,7 @@ import java.util.function.Consumer;
  * - Avatar with initials
  * - Chat name
  * - Connection status indicator (send/receive capability)
- * - Rename button
+ * - Rename button with icon
  */
 public class ChatListCell extends ListCell<String> {
 
@@ -35,6 +38,8 @@ public class ChatListCell extends ListCell<String> {
     private final Label nameLabel;
     private final Label statusLabel;
     private final Button renameButton;
+    private final ImageView renameIcon;
+    private final ImageView addIcon;
     private final Consumer<Integer> onRenameAction;
 
     /**
@@ -53,7 +58,15 @@ public class ChatListCell extends ListCell<String> {
         avatarInitial.getStyleClass().add("chat-avatar-text");
         avatarInitial.setFill(Color.WHITE);
 
-        avatar = new StackPane(avatarCircle, avatarInitial);
+        // Add icon for "New Chat" item
+        addIcon = new ImageView();
+        addIcon.setFitWidth(20);
+        addIcon.setFitHeight(20);
+        addIcon.setPreserveRatio(true);
+        addIcon.setVisible(false);
+        addIcon.setManaged(false);
+
+        avatar = new StackPane(avatarCircle, avatarInitial, addIcon);
         avatar.setMinSize(AVATAR_SIZE, AVATAR_SIZE);
         avatar.setMaxSize(AVATAR_SIZE, AVATAR_SIZE);
 
@@ -71,9 +84,16 @@ public class ChatListCell extends ListCell<String> {
         textContainer.setAlignment(Pos.CENTER_LEFT);
         HBox.setHgrow(textContainer, Priority.ALWAYS);
 
-        // Rename button
-        renameButton = new Button("✎");
+        // Rename button with icon
+        renameIcon = new ImageView();
+        renameIcon.setFitWidth(14);
+        renameIcon.setFitHeight(14);
+        renameIcon.setPreserveRatio(true);
+        
+        renameButton = new Button();
+        renameButton.setGraphic(renameIcon);
         renameButton.getStyleClass().add("chat-rename-button");
+        renameButton.setTooltip(new Tooltip("Rename chat"));
         renameButton.setOnAction(event -> {
             if (onRenameAction != null && getIndex() > 0) {
                 onRenameAction.accept(getIndex());
@@ -86,7 +106,7 @@ public class ChatListCell extends ListCell<String> {
         container.setPadding(new Insets(8, 12, 8, 12));
         container.getChildren().addAll(avatar, textContainer, renameButton);
 
-        // Listen for selection changes to update text colors
+        // Listen for selection changes to update text colors and icons
         selectedProperty().addListener((obs, wasSelected, isSelected) -> {
             updateTextColors(isSelected);
         });
@@ -117,6 +137,29 @@ public class ChatListCell extends ListCell<String> {
         }
     }
 
+    /**
+     * Updates icons based on the current theme.
+     */
+    private void updateIcons() {
+        boolean isDarkTheme = false;
+        if (getListView() != null && getListView().getScene() != null) {
+            isDarkTheme = getListView().getScene().getStylesheets().stream()
+                    .anyMatch(s -> s.contains("dark.css"));
+        }
+        
+        String theme = isDarkTheme ? "dark" : "light";
+        String themedPath = "/org/example/icons/" + theme + "/";
+        String colorfulPath = "/org/example/icons/";
+        
+        try {
+            renameIcon.setImage(new Image(getClass().getResourceAsStream(themedPath + "edit.png")));
+            // Use white add icon since it's on a colored (accent) background
+            addIcon.setImage(new Image(getClass().getResourceAsStream(colorfulPath + "add-white.png")));
+        } catch (Exception e) {
+            // Icon loading failed, use fallback
+        }
+    }
+
     @Override
     protected void updateItem(String item, boolean empty) {
         super.updateItem(item, empty);
@@ -126,6 +169,9 @@ public class ChatListCell extends ListCell<String> {
             setGraphic(null);
             return;
         }
+
+        // Update icons for current theme
+        updateIcons();
 
         int index = getIndex();
 
@@ -146,8 +192,10 @@ public class ChatListCell extends ListCell<String> {
 
     private void setupNewChatItem() {
         // Special avatar for "New Chat"
-        avatarCircle.setFill(Color.web("#10b981")); // Green
-        avatarInitial.setText("+");
+        avatarCircle.setFill(Color.web("#5865F2")); // Discord blue/purple
+        avatarInitial.setVisible(false);
+        addIcon.setVisible(true);
+        addIcon.setManaged(true);
 
         nameLabel.setText("New Chat");
         statusLabel.setText("Start a new conversation");
@@ -158,6 +206,11 @@ public class ChatListCell extends ListCell<String> {
     }
 
     private void setupRegularChatItem(String chatName) {
+        // Hide add icon, show initial
+        addIcon.setVisible(false);
+        addIcon.setManaged(false);
+        avatarInitial.setVisible(true);
+
         // Parse chat name to extract display name and status
         String displayName = chatName;
         String statusText = "";

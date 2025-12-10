@@ -139,5 +139,12 @@ public class GUI extends Application {
             applyTheme(scene);
         }
     }
+
+    /**
+     * Returns whether the dark theme is currently active.
+     */
+    public boolean isDarkTheme() {
+        return isDarkTheme;
+    }
 }
 

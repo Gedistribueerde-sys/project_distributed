@@ -6,9 +6,12 @@
 <?import javafx.scene.control.Separator?>
 <?import javafx.scene.control.TextArea?>
 <?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.Tooltip?>
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Region?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.image.ImageView?>
 
 <VBox fx:id="rootPane" spacing="16" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="org.example.controller.NewChatController" styleClass="root"
@@ -18,16 +21,22 @@
     </padding>
     <children>
         <!-- Header -->
-        <VBox alignment="CENTER_LEFT" spacing="4">
-            <Label text="New Conversation" styleClass="title-label" style="-fx-font-size: 20px;"/>
-            <Label text="Set up a secure chat with someone" styleClass="hint-label"/>
-        </VBox>
+        <HBox alignment="CENTER_LEFT" spacing="12">
+            <ImageView fx:id="headerIcon" fitHeight="32" fitWidth="32" preserveRatio="true"/>
+            <VBox spacing="4">
+                <Label text="New Conversation" styleClass="page-title"/>
+                <Label text="Set up a secure chat with someone" styleClass="hint-label"/>
+            </VBox>
+        </HBox>
 
         <Separator/>
 
         <!-- Chat Name -->
         <VBox spacing="8">
-            <Label text="Chat Name" style="-fx-font-weight: 600;"/>
+            <HBox alignment="CENTER_LEFT" spacing="6">
+                <ImageView fx:id="chatIcon" fitHeight="16" fitWidth="16" preserveRatio="true"/>
+                <Label text="Chat Name" styleClass="field-label"/>
+            </HBox>
             <TextField fx:id="chatNameField" promptText="Give this chat a name" prefHeight="42"/>
         </VBox>
 
@@ -35,31 +44,51 @@
 
         <!-- Send Key Section -->
         <VBox spacing="10">
-            <VBox spacing="4">
-                <Label text="📤 Your Send Key" style="-fx-font-weight: 600;"/>
-                <Label text="Generate a key and share it with your chat partner."
-                       styleClass="hint-label" wrapText="true"/>
-            </VBox>
+            <HBox alignment="CENTER_LEFT" spacing="6">
+                <ImageView fx:id="keyIcon" fitHeight="16" fitWidth="16" preserveRatio="true"/>
+                <VBox spacing="4">
+                    <Label text="Your Send Key" styleClass="field-label"/>
+                    <Label text="Generate a key and share it with your chat partner."
+                           styleClass="hint-label" wrapText="true"/>
+                </VBox>
+            </HBox>
             <HBox spacing="10" alignment="CENTER_LEFT">
-                <Button fx:id="generateSendKeyButton" text="Generate Key" onAction="#handleGenerateSendKey"/>
-                <Button fx:id="copySendKeyButton" text="📋 Copy" onAction="#handleCopySendKey" disable="true"
-                        style="-fx-background-color: #23A559;"/>
+                <Button fx:id="generateSendKeyButton" onAction="#handleGenerateSendKey"
+                        styleClass="primary-button" prefHeight="36">
+                    <graphic>
+                        <ImageView fx:id="generateIcon" fitHeight="16" fitWidth="16" preserveRatio="true"/>
+                    </graphic>
+                    <text>Generate Key</text>
+                </Button>
+                <Button fx:id="copySendKeyButton" onAction="#handleCopySendKey" disable="true"
+                        styleClass="copy-button" prefHeight="36">
+                    <graphic>
+                        <ImageView fx:id="copyIcon" fitHeight="16" fitWidth="16" preserveRatio="true"/>
+                    </graphic>
+                    <text>Copy</text>
+                    <tooltip>
+                        <Tooltip text="Copy key to clipboard"/>
+                    </tooltip>
+                </Button>
             </HBox>
             <TextArea fx:id="sendKeyDisplay" editable="false" wrapText="true" prefRowCount="2"
-                      promptText="Click 'Generate Key' to create your send key" styleClass="state-view"/>
+                      promptText="Click 'Generate Key' to create your send key" styleClass="code-area"/>
         </VBox>
 
         <Separator/>
 
         <!-- Receive Key Section -->
         <VBox spacing="10">
-            <VBox spacing="4">
-                <Label text="📥 Partner's Key" style="-fx-font-weight: 600;"/>
-                <Label text="Paste the key you received from your chat partner."
-                       styleClass="hint-label" wrapText="true"/>
-            </VBox>
+            <HBox alignment="CENTER_LEFT" spacing="6">
+                <ImageView fx:id="importIcon" fitHeight="16" fitWidth="16" preserveRatio="true"/>
+                <VBox spacing="4">
+                    <Label text="Partner's Key" styleClass="field-label"/>
+                    <Label text="Paste the key you received from your chat partner."
+                           styleClass="hint-label" wrapText="true"/>
+                </VBox>
+            </HBox>
             <TextArea fx:id="receiveKeyArea" promptText="Paste their key here (leave empty for send-only chat)"
-                      wrapText="true" prefRowCount="2" styleClass="state-view"/>
+                      wrapText="true" prefRowCount="2" styleClass="code-area"/>
         </VBox>
 
         <Region prefHeight="8"/>
@@ -68,12 +97,20 @@
 
         <!-- Action Buttons -->
         <HBox spacing="12" alignment="CENTER">
-            <Button fx:id="createChatButton" text="Create Chat" onAction="#handleCreateChat"
-                    maxWidth="Infinity" HBox.hgrow="ALWAYS" prefHeight="44"/>
-            <Button fx:id="cancelButton" text="Cancel" onAction="#handleCancel"
-                    maxWidth="Infinity" HBox.hgrow="ALWAYS" prefHeight="44"
-                    style="-fx-background-color: transparent; -fx-border-color: #5C6370; -fx-border-width: 1; -fx-border-radius: 6; -fx-text-fill: #5C6370;"/>
+            <Button fx:id="createChatButton" onAction="#handleCreateChat"
+                    maxWidth="Infinity" HBox.hgrow="ALWAYS" prefHeight="44" styleClass="primary-button">
+                <graphic>
+                    <ImageView fx:id="createIcon" fitHeight="18" fitWidth="18" preserveRatio="true"/>
+                </graphic>
+                <text>Create Chat</text>
+            </Button>
+            <Button fx:id="cancelButton" onAction="#handleCancel"
+                    maxWidth="Infinity" HBox.hgrow="ALWAYS" prefHeight="44" styleClass="secondary-button">
+                <graphic>
+                    <ImageView fx:id="cancelIcon" fitHeight="18" fitWidth="18" preserveRatio="true"/>
+                </graphic>
+                <text>Cancel</text>
+            </Button>
         </HBox>
     </children>
 </VBox>
-
