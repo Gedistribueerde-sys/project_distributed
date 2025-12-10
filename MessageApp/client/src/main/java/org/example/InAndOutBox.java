@@ -108,7 +108,7 @@ public class InAndOutBox implements Runnable {
                 final int maxBackoff = 8000;
         
                 while (running) {
-                    if (!processOneInboxMessageSafely()) {
+                    if (!processBackgroundInboxMessages()) {
                         long sleepTime = currentBackoff + random.nextInt(1000);
                         currentBackoff = Math.min(currentBackoff * 2, maxBackoff);
                         try {
@@ -121,7 +121,83 @@ public class InAndOutBox implements Runnable {
                         currentBackoff = 1000; // Reset backoff on success
                     }
                 }
-            }    
+            }
+
+            /**
+             * Fast polling loop for the active (displayed) chat.
+             * Uses low latency base interval with small jitter.
+             */
+            private void processActiveInbox() {
+                final int baseInterval = 300;  // Base polling interval in ms
+                final int maxJitter = 200;     // Maximum jitter in ms
+
+                while (running) {
+                    processActiveChatMessage();
+
+                    // Low latency with small jitter
+                    int sleepTime = baseInterval + random.nextInt(maxJitter);
+                    try {
+                        Thread.sleep(sleepTime);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                }
+            }
+
+            /**
+             * Processes the active chat with low latency.
+             * @return true if a message was fetched, false otherwise
+             */
+            private boolean processActiveChatMessage() {
+                if (databaseManager == null) return false;
+
+                Optional<ChatState> activeChatOpt = chatCore.getActiveChatState();
+                if (activeChatOpt.isEmpty()) return false;
+
+                ChatState activeChat = activeChatOpt.get();
+                if (!activeChat.canReceive() || activeChat.isPoisoned()) return false;
+
+                // Try to lock, if busy skip this cycle
+                if (!inboxLock.tryLock()) return false;
+
+                try {
+                    return fetchAndProcessMessage(activeChat);
+                } finally {
+                    inboxLock.unlock();
+                }
+            }
+
+            /**
+             * Processes background (non-active) chats with exponential backoff.
+             * @return true if any message was fetched, false otherwise
+             */
+            private boolean processBackgroundInboxMessages() {
+                if (databaseManager == null) return false;
+
+                if (!inboxLock.tryLock()) return false;
+
+                try {
+                    String activeChatUuid = chatCore.getActiveChatUuid();
+                    boolean didWork = false;
+
+                    for (ChatState chat : chatCore.getActiveChatsSnapshot()) {
+                        // Skip the active chat (handled by fast polling)
+                        if (activeChatUuid != null && chat.getRecipientUuid().equals(activeChatUuid)) {
+                            continue;
+                        }
+
+                        if (chat.canReceive() && !chat.isPoisoned()) {
+                            if (fetchAndProcessMessage(chat)) {
+                                didWork = true;
+                            }
+                        }
+                    }
+                    return didWork;
+                } finally {
+                    inboxLock.unlock();
+                }
+            }
         private void disconnect() {
             bulletinBoardStubs.clear();
             log.info("All RMI connections disconnected.");
@@ -134,8 +210,9 @@ public class InAndOutBox implements Runnable {
             final int baseSleep = 500;
     
             new Thread(this::processOutbox, "Outbox-Processor-Thread").start();
-            new Thread(this::processInbox, "Inbox-Processor-Thread").start();
-    
+            new Thread(this::processInbox, "Background-Inbox-Processor-Thread").start();
+            new Thread(this::processActiveInbox, "Active-Inbox-Processor-Thread").start();
+
             while (running) {
                 boolean didWork = false;
     
@@ -306,28 +383,6 @@ public class InAndOutBox implements Runnable {
                 }
             }
             log.info("Finished immediate fetch for {}. Fetched {} messages.", chat.recipient, fetchedCount);
-        } finally {
-            inboxLock.unlock();
-        }
-    }
-
-    private boolean processOneInboxMessageSafely() {
-        if (databaseManager == null) return false;
-
-        // Try to lock. If busy, another thread is fetching, so we back off.
-        if (!inboxLock.tryLock()) return false;
-
-        try {
-            // Iterate through all active chats and try to fetch one message for each
-            boolean didWork = false;
-            for (ChatState chat : chatCore.getActiveChatsSnapshot()) {
-                if (chat.canReceive() && !chat.isPoisoned()) {
-                    if (fetchAndProcessMessage(chat)) {
-                        didWork = true;
-                    }
-                }
-            }
-            return didWork;
         } finally {
             inboxLock.unlock();
         }

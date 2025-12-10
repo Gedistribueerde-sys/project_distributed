@@ -125,6 +125,9 @@ public class ChatController {
                 messageField.setVisible(false);
                 messageField.setManaged(false);
 
+                // Clear active chat for fast polling
+                chatCore.setActiveChatUuid(null);
+
                 Platform.runLater(() -> {
                     showNewChatDialog();
                     // chatList is updated in showNewChatDialog if successful
@@ -141,6 +144,8 @@ public class ChatController {
                 // Immediately fetch messages for the selected chat
                 ChatState selectedChat = chatCore.getChatState(selectedIndex);
                 if (selectedChat != null) {
+                    // Set this chat as active for fast polling
+                    chatCore.setActiveChatUuid(selectedChat.getRecipientUuid());
                     new Thread(() -> chatCore.getInAndOutBox().fetchMessagesImmediately(selectedChat)).start();
                 }
 

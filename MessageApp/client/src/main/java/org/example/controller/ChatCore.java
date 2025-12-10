@@ -25,6 +25,9 @@ public class ChatCore {
     private String currentUser;
     private String currentUserUuid;
 
+    // Track the currently displayed/active chat for fast polling
+    private volatile String activeChatUuid = null;
+
     private Runnable onMessageUpdateCallback;
 
     private DatabaseManager databaseManager;
@@ -384,6 +387,32 @@ public class ChatCore {
         }
     }
 
+    /**
+     * Sets the currently displayed/active chat for fast polling.
+     * @param chatUuid The UUID of the active chat, or null if no chat is selected.
+     */
+    public void setActiveChatUuid(String chatUuid) {
+        this.activeChatUuid = chatUuid;
+        log.debug("Active chat set to: {}", chatUuid);
+    }
+
+    /**
+     * Gets the currently displayed/active chat UUID.
+     * @return The UUID of the active chat, or null if no chat is selected.
+     */
+    public String getActiveChatUuid() {
+        return activeChatUuid;
+    }
+
+    /**
+     * Gets the ChatState for the currently active chat.
+     * @return Optional containing the active ChatState, or empty if no chat is selected.
+     */
+    public Optional<ChatState> getActiveChatState() {
+        String uuid = activeChatUuid;
+        if (uuid == null) return Optional.empty();
+        return getChatStateByRecipientUuid(uuid);
+    }
 
     // Callback registration for message updates
     public void setOnMessageUpdateCallback(Runnable callback) {
