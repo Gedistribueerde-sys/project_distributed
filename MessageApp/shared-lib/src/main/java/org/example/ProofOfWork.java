@@ -17,10 +17,11 @@ public class ProofOfWork {
      - 22 bits: ~4M attempts, ~200-400ms
      - 23 bits: ~8M attempts, ~400-800ms
      - 24 bits: ~16M attempts, ~1-2s
-     Tested on i7-11800H, 23 bits provides a good
-     balance between DDoS protection (~500ms computation) and user experience.
+     Tested on i7-11800H, 22 bits provides a good
+     balance between DDoS protection (~244ms computation) and user experience.
+     Since a i7-11800H is fairly powerful we choose for 22 bits.
      */
-    public static final int DIFFICULTY_BITS = 23;
+    public static final int DIFFICULTY_BITS = 22;
 
     private static final SecureRandom random = new SecureRandom();
 
