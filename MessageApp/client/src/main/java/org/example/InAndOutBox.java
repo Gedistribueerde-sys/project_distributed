@@ -86,8 +86,7 @@ public class InAndOutBox implements Runnable {
             private void processOutbox() {
                 long currentBackoff = 1000;
                 final int maxBackoff = 8000;
-                final int baseSleep = 500;
-        
+
                 while (running) {
                     if (!processOneOutboxMessageSafely()) {
                         long sleepTime = currentBackoff + random.nextInt(1000);
@@ -220,10 +219,33 @@ public class InAndOutBox implements Runnable {
         BulletinBoard bulletinBoard = bulletinBoardOpt.get();
 
         try {
-            long nextIdx = ChatCrypto.makeNewIdx();
-            byte[] nextTagBytes = ChatCrypto.makeNewTag();
-            String nextTag = ChatCrypto.tagToBase64(nextTagBytes);
+            // Two-Phase Send Logic for Idempotent Retries:
+            // Phase 1: Ensure proposed values exist (generate and persist if not)
+            long nextIdx;
+            byte[] nextTagBytes;
+            String nextTag;
+            byte[] nextKeyBytes;
 
+            if (pending.proposedNextIdx() != null && pending.proposedNextTag() != null && pending.proposedNextKey() != null) {
+                // Use existing proposed values (retry scenario)
+                nextIdx = pending.proposedNextIdx();
+                nextTag = pending.proposedNextTag();
+                nextTagBytes = java.util.Base64.getDecoder().decode(nextTag);
+                nextKeyBytes = pending.proposedNextKey();
+                log.info("Using existing proposed values for message {}: idx={}", pending.id(), nextIdx);
+            } else {
+                // Generate new proposed values and persist them first
+                nextIdx = ChatCrypto.makeNewIdx();
+                nextTagBytes = ChatCrypto.makeNewTag();
+                nextTag = ChatCrypto.tagToBase64(nextTagBytes);
+                nextKeyBytes = ChatCrypto.makeNewSecretKey(chat.sendKey).getEncoded();
+
+                // Persist proposed values BEFORE attempting to send
+                databaseManager.saveProposedSendValues(pending.id(), pending.recipientUuid(), nextIdx, nextTag, nextKeyBytes);
+                log.info("Generated and saved proposed values for message {}: idx={}", pending.id(), nextIdx);
+            }
+
+            // Phase 2: Construct and send the payload using the stored proposed values
             ChatProto.ChatPayload chatPayload = ChatProto.ChatPayload.newBuilder()
                     .setMessage(pending.messageText())
                     .setNextIdx(nextIdx)
@@ -245,12 +267,12 @@ public class InAndOutBox implements Runnable {
 
             log.info("OUTBOX PUSH SUCCESS: Message for {} sent.", pending.recipient());
 
+            // Phase 3: Finalize - move proposed values to actual state
             chat.sendIdx = nextIdx;
             chat.sendTag = nextTag;
-            chat.sendKey = ChatCrypto.makeNewSecretKey(chat.sendKey);
+            chat.sendKey = new javax.crypto.spec.SecretKeySpec(nextKeyBytes, "AES");
 
-            byte[] newSendKeyBytes = chat.sendKey.getEncoded();
-            databaseManager.markMessageAsSentAndUpdateState(pending.id(), chat.recipient, newSendKeyBytes, chat.sendIdx, chat.sendTag);
+            databaseManager.markMessageAsSentAndUpdateState(pending.id(), chat.recipient, nextKeyBytes, chat.sendIdx, chat.sendTag);
 
             return true;
         } catch (RemoteException e) {

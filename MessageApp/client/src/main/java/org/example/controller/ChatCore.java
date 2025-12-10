@@ -333,7 +333,7 @@ public class ChatCore {
             if (databaseManager != null) {
 
                 long messageId = databaseManager.addMessage(chat.recipient, chat.getRecipientUuid(), message, true, false);
-                DatabaseManager.PendingMessage pendingMessage = new DatabaseManager.PendingMessage(messageId, chat.recipient, chat.getRecipientUuid(), message);
+                DatabaseManager.PendingMessage pendingMessage = new DatabaseManager.PendingMessage(messageId, chat.recipient, chat.getRecipientUuid(), message, null, null, null);
                 new Thread(() -> inAndOutBox.sendMessageImmediately(pendingMessage)).start();
 
             }
