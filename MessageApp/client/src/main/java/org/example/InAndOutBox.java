@@ -333,9 +333,14 @@ public class InAndOutBox implements Runnable {
             byte[] encryptedPayload = ChatCrypto.encryptPayloadBytes(payloadBytes, chat.sendKey);
             String tagString = Encryption.preimageToTag(chat.sendTag);
 
+            // Compute proof-of-work before sending
+            log.info("OUTBOX PUSH: Computing proof-of-work for message to {} at idx {}", pending.recipient(), chat.sendIdx);
+            ProofOfWork.ProofResult powResult = ProofOfWork.computeProof(tagString, chat.sendIdx);
+            log.info("OUTBOX PUSH: Proof-of-work computed in {}ms (nonce={})", powResult.computationTimeMs(), powResult.nonce());
+
             log.info("OUTBOX PUSH: Trying to send to {} at idx {} with tag {}", pending.recipient(), chat.sendIdx, tagString);
 
-            boolean success = bulletinBoard.add(chat.sendIdx, encryptedPayload, tagString);
+            boolean success = bulletinBoard.add(chat.sendIdx, encryptedPayload, tagString, powResult.nonce());
 
             if (!success) {
                 log.warn("OUTBOX PUSH FAILED: Server returned false. Will retry later.");

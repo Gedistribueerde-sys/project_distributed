@@ -75,7 +75,13 @@ public class BulletinBoardImpl implements BulletinBoard {
     }
 
     @Override
-    public boolean add(long idx, byte[] value, String tag) throws RemoteException {
+    public boolean add(long idx, byte[] value, String tag, long nonce) throws RemoteException {
+        // Verify proof-of-work before accepting the message
+        if (!ProofOfWork.verifyProof(tag, idx, nonce)) {
+            logger.warn("REJECTED: Invalid proof-of-work for tag {} at idx {}", tag, idx);
+            return false;
+        }
+
         if (activeBoard.isOverloaded()) {
             checkAndResize();
         }
