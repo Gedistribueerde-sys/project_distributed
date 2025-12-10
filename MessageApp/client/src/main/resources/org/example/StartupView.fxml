@@ -1,17 +1,43 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.scene.control.Button?>
-<?import javafx.scene.layout.VBox?>
 <?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.layout.Region?>
 
-<VBox xmlns="http://javafx.com/javafx"
-      xmlns:fx="http://javafx.com/fxml"
+<VBox xmlns="http://javafx.com/javafx/17"
+      xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="org.example.controller.StartupController"
-      alignment="CENTER" spacing="20">
+      alignment="CENTER" spacing="16" prefWidth="420" prefHeight="400"
+      styleClass="root" stylesheets="@styles.css">
     <padding>
-        <Insets top="20" right="20" bottom="20" left="20"/>
+        <Insets top="40" right="40" bottom="40" left="40"/>
     </padding>
 
-    <Button text="Login" onAction="#handleLoginButtonAction"/>
-    <Button text="Register" onAction="#handleRegisterButtonAction"/>
+    <!-- App Logo/Icon -->
+    <Label text="💬" style="-fx-font-size: 64px;"/>
+
+    <!-- App Name -->
+    <VBox alignment="CENTER" spacing="4">
+        <Label text="SecureChat" styleClass="title-label" style="-fx-font-size: 28px;"/>
+        <Label text="End-to-end encrypted messaging" styleClass="hint-label"/>
+    </VBox>
+
+    <Region prefHeight="24"/>
+
+    <!-- Action Buttons -->
+    <VBox spacing="12" alignment="CENTER" maxWidth="280">
+        <Button text="Sign In" onAction="#handleLoginButtonAction"
+                maxWidth="Infinity" prefHeight="48"/>
+        <Button text="Create Account" onAction="#handleRegisterButtonAction"
+                maxWidth="Infinity" prefHeight="48"
+                style="-fx-background-color: transparent; -fx-border-color: #6366f1; -fx-border-width: 2; -fx-text-fill: #6366f1;"/>
+    </VBox>
+
+    <Region VBox.vgrow="ALWAYS"/>
+
+    <!-- Footer -->
+    <Label text="🔒 Your messages are secure" styleClass="hint-label"/>
 </VBox>
+

@@ -7,23 +7,43 @@
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
+<?import javafx.scene.layout.Region?>
 
-<VBox alignment="CENTER" prefHeight="250.0" prefWidth="400.0" spacing="10" styleClass="root" stylesheets="@styles.css"
-      xmlns="http://javafx.com/javafx/8.0.171" xmlns:fx="http://javafx.com/fxml/1"
+<VBox alignment="CENTER" prefHeight="350.0" prefWidth="420.0" spacing="16" styleClass="root"
+      stylesheets="@styles.css"
+      xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="org.example.controller.LoginController">
     <padding>
-        <Insets bottom="20.0" left="20.0" right="20.0" top="20.0"/>
+        <Insets bottom="32.0" left="40.0" right="40.0" top="32.0"/>
     </padding>
     <children>
-        <Label text="Login"/>
-        <TextField fx:id="usernameField" promptText="Username"/>
-        <PasswordField fx:id="passwordField" onAction="#handleLogin" promptText="Password"/>
-        <HBox alignment="CENTER" spacing="10">
-            <children>
-                <Button fx:id="loginButton" onAction="#handleLogin" text="Login"/>
-                <Button fx:id="backButton" onAction="#handleBackButtonAction" text="Back"/>
-            </children>
-        </HBox>
-        <Label fx:id="statusLabel"/>
+        <!-- Header -->
+        <VBox alignment="CENTER" spacing="8">
+            <Label text="🔐" style="-fx-font-size: 48px;"/>
+            <Label text="Welcome Back" styleClass="title-label"/>
+            <Label text="Sign in to continue" styleClass="hint-label"/>
+        </VBox>
+
+        <Region prefHeight="16"/>
+
+        <!-- Form Fields -->
+        <VBox spacing="12">
+            <TextField fx:id="usernameField" promptText="Username" prefHeight="44"/>
+            <PasswordField fx:id="passwordField" onAction="#handleLogin" promptText="Password" prefHeight="44"/>
+        </VBox>
+
+        <Region prefHeight="8"/>
+
+        <!-- Buttons -->
+        <VBox spacing="10">
+            <Button fx:id="loginButton" onAction="#handleLogin" text="Sign In"
+                    maxWidth="Infinity" prefHeight="44"/>
+            <Button fx:id="backButton" onAction="#handleBackButtonAction" text="← Back"
+                    maxWidth="Infinity" prefHeight="40" style="-fx-background-color: transparent; -fx-text-fill: #64748b;"/>
+        </VBox>
+
+        <!-- Status -->
+        <Label fx:id="statusLabel" styleClass="hint-label" style="-fx-text-fill: #ef4444;"/>
     </children>
 </VBox>
+

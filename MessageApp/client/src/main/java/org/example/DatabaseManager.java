@@ -210,8 +210,24 @@ public class DatabaseManager {
                     byte[] decContent = CryptoUtils.decrypt(encContent, dbKey, aad);
                     String content = new String(decContent, StandardCharsets.UTF_8);
                     boolean isSent = rs.getInt("is_sent") == 1;
+                    boolean isServerSent = rs.getInt("is_server_sent") == 1;
                     String sender = isSent ? username : recipient;
-                    messages.add(new Message(sender, content, isSent));
+
+                    // Determine message status
+                    Message.MessageStatus status;
+                    if (isSent) {
+                        status = isServerSent ? Message.MessageStatus.SENT : Message.MessageStatus.PENDING;
+                    } else {
+                        status = Message.MessageStatus.DELIVERED;
+                    }
+
+                    // Get timestamp from database
+                    long timestampMillis = rs.getLong("timestamp");
+                    java.time.LocalDateTime timestamp = java.time.Instant.ofEpochMilli(timestampMillis)
+                            .atZone(java.time.ZoneId.systemDefault())
+                            .toLocalDateTime();
+
+                    messages.add(new Message(sender, content, isSent, status, timestamp));
                 }
             }
             log.debug("Loaded {} message(s) for recipient: {}", messages.size(), recipient);

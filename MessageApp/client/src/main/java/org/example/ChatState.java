@@ -72,11 +72,13 @@ public class ChatState {
     }
 
     public void addSentMessage(String content, String sender) {
-        messages.add(new Message(sender, content, true));
+        // New sent messages start as PENDING until confirmed by server
+        messages.add(new Message(sender, content, true, Message.MessageStatus.PENDING));
     }
 
     public void addReceivedMessage(String content) {
-        messages.add(new Message(recipient, content, false));
+        // Received messages are already DELIVERED
+        messages.add(new Message(recipient, content, false, Message.MessageStatus.DELIVERED));
     }
 
     @Override

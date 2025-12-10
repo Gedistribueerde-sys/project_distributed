@@ -5,49 +5,77 @@
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ListView?>
 <?import javafx.scene.control.SplitPane?>
-<?import javafx.scene.control.TextArea?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.VBox?>
+<?import javafx.scene.control.Separator?>
 
-<SplitPane fx:id="splitPane" dividerPositions="0.3" prefHeight="600.0" prefWidth="900.0" stylesheets="@styles.css"
-           xmlns="http://javafx.com/javafx/8.0.171" xmlns:fx="http://javafx.com/fxml/1"
+<SplitPane fx:id="splitPane" dividerPositions="0.28" prefHeight="650.0" prefWidth="1000.0"
+           stylesheets="@styles.css"
+           xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
            fx:controller="org.example.controller.ChatController">
     <items>
-        <VBox fx:id="leftBox" prefWidth="250.0" styleClass="chat-list-pane" spacing="10">
-            <padding>
-                <Insets bottom="10.0" left="10.0" right="10.0" top="10.0"/>
-            </padding>
+        <!-- Left Panel: Chat List -->
+        <VBox fx:id="leftBox" prefWidth="280.0" styleClass="chat-list-pane" spacing="0">
             <children>
-                <Label styleClass="title-label" text="Chats"/>
-                <ListView fx:id="chatList" VBox.vgrow="ALWAYS"/>
+                <!-- Header -->
+                <HBox alignment="CENTER_LEFT" spacing="10" style="-fx-padding: 16 16 12 16;">
+                    <children>
+                        <Label styleClass="title-label" text="Chats"/>
+                        <Region HBox.hgrow="ALWAYS"/>
+                    </children>
+                </HBox>
+
+                <Separator/>
+
+                <!-- Chat List -->
+                <ListView fx:id="chatList" VBox.vgrow="ALWAYS" style="-fx-padding: 8;"/>
             </children>
         </VBox>
-        <VBox fx:id="rightBox" spacing="10">
-            <padding>
-                <Insets bottom="10.0" left="10.0" right="10.0" top="10.0"/>
-            </padding>
+
+        <!-- Right Panel: Messages -->
+        <VBox fx:id="rightBox" spacing="0">
             <children>
-                <HBox alignment="CENTER_LEFT" styleClass="top-bar" spacing="10">
+                <!-- Top Bar with User Info -->
+                <HBox alignment="CENTER_LEFT" styleClass="top-bar" spacing="12">
                     <children>
                         <Label fx:id="userLabel" styleClass="user-label" text="Logged in as: "/>
                         <Region HBox.hgrow="ALWAYS"/>
+                        <Button fx:id="themeToggleButton" onAction="#handleThemeToggle" text="🌓 Theme"/>
                         <Button fx:id="logoutButton" onAction="#handleLogout" text="Logout"/>
-                        <Button fx:id="themeToggleButton" onAction="#handleThemeToggle" text="Toggle Theme"/>
                     </children>
                 </HBox>
-                <ListView fx:id="messagesView" styleClass="messages-view" VBox.vgrow="ALWAYS"/>
-                <HBox fx:id="inputBar" spacing="10">
+
+                <!-- Chat Header - shows current recipient -->
+                <HBox fx:id="chatHeader" alignment="CENTER_LEFT" styleClass="chat-header" spacing="12" managed="false" visible="false">
+                    <padding>
+                        <Insets bottom="12.0" left="16.0" right="16.0" top="12.0"/>
+                    </padding>
                     <children>
-                        <TextField fx:id="messageField" onAction="#handleSend" promptText="Type a message..."
+                        <Label fx:id="recipientLabel" styleClass="recipient-label" text=""/>
+                        <Region HBox.hgrow="ALWAYS"/>
+                        <Label fx:id="connectionStatusLabel" styleClass="connection-status-label" text=""/>
+                    </children>
+                </HBox>
+
+                <!-- Messages View -->
+                <ListView fx:id="messagesView" styleClass="messages-view" VBox.vgrow="ALWAYS"/>
+
+                <!-- Input Bar -->
+                <HBox fx:id="inputBar" spacing="12" alignment="CENTER">
+                    <padding>
+                        <Insets bottom="12.0" left="16.0" right="16.0" top="12.0"/>
+                    </padding>
+                    <children>
+                        <TextField fx:id="messageField" onAction="#handleSend"
+                                   promptText="Type a message..."
                                    styleClass="message-field" HBox.hgrow="ALWAYS"/>
                         <Button fx:id="sendButton" onAction="#handleSend" text="Send"/>
-
                     </children>
                 </HBox>
             </children>
         </VBox>
-
     </items>
 </SplitPane>
+

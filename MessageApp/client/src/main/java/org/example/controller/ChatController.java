@@ -12,6 +12,7 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.stage.Modality;
 import org.example.ChatState;
+import org.example.GUI.ChatListCell;
 import org.example.GUI.Message;
 import org.example.GUI.MessageCell;
 import org.example.GUI.GUI;
@@ -36,6 +37,12 @@ public class ChatController {
     private TextField messageField;
     @FXML
     private Button sendButton;
+    @FXML
+    private HBox chatHeader;
+    @FXML
+    private Label recipientLabel;
+    @FXML
+    private Label connectionStatusLabel;
 
 
     private ChatCore chatCore;
@@ -56,52 +63,8 @@ public class ChatController {
 
     @FXML
     public void initialize() {
-        // Custom Cell Factory for Chat List to include Rename Button
-        chatList.setCellFactory(lv -> new ListCell<String>() {
-            private final HBox content;
-            private final Label nameLabel;
-            private final Button renameButton;
-
-            {
-                nameLabel = new Label();
-                nameLabel.setMaxWidth(Double.MAX_VALUE);
-                HBox.setHgrow(nameLabel, Priority.ALWAYS);
-
-                renameButton = new Button("✎"); // Pencil icon or "Rename"
-                renameButton.setStyle("-fx-font-size: 16px; -fx-padding: 4 8;");
-                renameButton.setOnAction(event -> {
-                    String item = getItem();
-                    if (item != null && getIndex() > 0) { // Index 0 is "New Chat"
-                        handleRenameChat(getIndex());
-                    }
-                });
-
-                content = new HBox(nameLabel, renameButton);
-                content.setSpacing(5);
-                content.setAlignment(Pos.CENTER_LEFT);
-            }
-
-            @Override
-            protected void updateItem(String item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setGraphic(null);
-                    setText(null);
-                } else {
-                    nameLabel.setText(item);
-                    // Hide rename button for "New Chat" (index 0)
-                    if (getIndex() == 0) {
-                        renameButton.setVisible(false);
-                        renameButton.setManaged(false);
-                    } else {
-                        renameButton.setVisible(true);
-                        renameButton.setManaged(true);
-                    }
-                    setGraphic(content);
-                    setText(null);
-                }
-            }
-        });
+        // Use custom ChatListCell for modern styling
+        chatList.setCellFactory(lv -> new ChatListCell(this::handleRenameChat));
 
         // This is called after the FXML file has been loaded
         chatList.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
@@ -121,6 +84,10 @@ public class ChatController {
 
                 messageField.setVisible(false);
                 messageField.setManaged(false);
+
+                // Hide chat header
+                chatHeader.setVisible(false);
+                chatHeader.setManaged(false);
 
                 // Clear active chat for fast polling
                 chatCore.setActiveChatUuid(null);
@@ -144,6 +111,9 @@ public class ChatController {
                     // Set this chat as active for fast polling
                     chatCore.setActiveChatUuid(selectedChat.getRecipientUuid());
                     new Thread(() -> chatCore.getInAndOutBox().fetchMessagesImmediately(selectedChat)).start();
+
+                    // Update and show chat header
+                    updateChatHeader(selectedChat);
                 }
 
                 // Refresh the message view and state
@@ -229,6 +199,37 @@ public class ChatController {
         List<Message> messages = chatCore.getMessagesForChat(selectedIndex);
         messagesView.getItems().setAll(messages);
         messagesView.scrollTo(messages.size() - 1); // Scroll naar het nieuwste bericht
+    }
+
+    /**
+     * Updates the chat header with recipient information.
+     */
+    private void updateChatHeader(ChatState chat) {
+        if (chat == null) {
+            chatHeader.setVisible(false);
+            chatHeader.setManaged(false);
+            return;
+        }
+
+        // Show the header
+        chatHeader.setVisible(true);
+        chatHeader.setManaged(true);
+
+        // Set recipient name
+        recipientLabel.setText(chat.recipient);
+
+        // Set connection status
+        String status;
+        if (chat.canSend() && chat.canReceive()) {
+            status = "↔ Two-way chat";
+        } else if (chat.canSend()) {
+            status = "→ Send only";
+        } else if (chat.canReceive()) {
+            status = "← Receive only";
+        } else {
+            status = "⚠ No connection";
+        }
+        connectionStatusLabel.setText(status);
     }
 
     private void updateChatList() {
