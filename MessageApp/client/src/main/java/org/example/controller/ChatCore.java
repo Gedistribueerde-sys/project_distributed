@@ -272,14 +272,6 @@ public class ChatCore {
         }
     }
 
-    public String getDebugStateForIndex(int listIndex) {
-        // listIndex = index in the ListView
-        // 0 = "➕ New Chat (BUMP)"
-        int idx = listIndex - 1;
-        if (idx < 0 || idx >= activeChats.size()) return "";
-        return activeChats.get(idx).debugInfo();
-    }
-
     //  Retrieves the names of the chats for the GUI
     public List<String> getChatNames() {
         List<String> names = new ArrayList<>();

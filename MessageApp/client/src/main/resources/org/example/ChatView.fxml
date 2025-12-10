@@ -37,7 +37,6 @@
                         <Button fx:id="themeToggleButton" onAction="#handleThemeToggle" text="Toggle Theme"/>
                     </children>
                 </HBox>
-                <TextArea fx:id="stateView" editable="false" prefRowCount="5" wrapText="true" styleClass="state-view"/>
                 <ListView fx:id="messagesView" styleClass="messages-view" VBox.vgrow="ALWAYS"/>
                 <HBox fx:id="inputBar" spacing="10">
                     <children>

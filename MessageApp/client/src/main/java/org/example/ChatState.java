@@ -97,23 +97,4 @@ public class ChatState {
         
         return recipient + " [" + shortUuid + "]" + status;
     }
-
-    // This is for debug purposes only
-    public String debugInfo() {
-        StringBuilder sb = new StringBuilder();
-
-        if (canSend()) {
-            sb.append("OUT (you → ").append(recipient).append(")\n").append(" key = ").append(ChatCrypto.keyToBase64(sendKey)).append("\n").append(" idx = ").append(sendIdx).append("\n").append(" tag = ").append(sendTag).append("\n\n");
-        } else {
-            sb.append("OUT: Not available (receive-only chat)\n\n");
-        }
-
-        if (canReceive()) {
-            sb.append("IN (").append(recipient).append(" → you)\n").append(" key = ").append(ChatCrypto.keyToBase64(recvKey)).append("\n").append(" idx = ").append(recvIdx).append("\n").append(" tag = ").append(recvTag);
-        } else {
-            sb.append("IN: Not available (send-only chat)");
-        }
-
-        return sb.toString();
-    }
 }

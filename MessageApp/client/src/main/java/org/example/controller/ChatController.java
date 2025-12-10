@@ -31,8 +31,6 @@ public class ChatController {
     @FXML
     private Label userLabel;
     @FXML
-    private TextArea stateView;
-    @FXML
     private ListView<Message> messagesView;
     @FXML
     private TextField messageField;
@@ -116,7 +114,6 @@ public class ChatController {
 
 
             if (selectedIndex == 0) {
-                stateView.clear();
                 messagesView.getItems().add(new Message("system", "Use the dialog to start a chat...", true));
                 // Hide buttons for new chat
                 sendButton.setVisible(false);
@@ -151,8 +148,6 @@ public class ChatController {
 
                 // Refresh the message view and state
                 refreshMessagesView(selectedIndex);
-                String debugText = chatCore.getDebugStateForIndex(selectedIndex);
-                stateView.setText(debugText);
             }
         });
     }
@@ -194,8 +189,6 @@ public class ChatController {
             int selectedIndex = chatList.getSelectionModel().getSelectedIndex();
             if (selectedIndex > 0) {
                 refreshMessagesView(selectedIndex);
-                String debugText = chatCore.getDebugStateForIndex(selectedIndex);
-                stateView.setText(debugText);
             }
         });
     }
@@ -220,8 +213,6 @@ public class ChatController {
         chatCore.sendMessage(selectedIndex, text);
         refreshMessagesView(selectedIndex);
         messageField.clear();
-        String debugText = chatCore.getDebugStateForIndex(selectedIndex);
-        stateView.setText(debugText);
     }
 
 
