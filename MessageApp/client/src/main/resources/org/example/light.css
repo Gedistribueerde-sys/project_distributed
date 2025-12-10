@@ -1,206 +1,195 @@
 /* =============================================================================
-   LIGHT THEME - Modern Messaging App Design
-   Clean, minimal design inspired by iMessage and WhatsApp
+   LIGHT THEME - Modern Messaging App
+   Color Palette:
+   - Primary: #5865F2 (Discord-like indigo)
+   - Primary Hover: #4752C4
+   - Background: #FFFFFF
+   - Surface: #F2F3F5
+   - Text Primary: #2E3338
+   - Text Secondary: #5C6370
+   - Success: #43B581
+   - Warning: #FAA61A
+   - Danger: #F04747
    ============================================================================= */
 
-/* --- Root & Typography --- */
 .root {
     -fx-font-family: 'Inter', 'Segoe UI', 'SF Pro Display', 'Roboto', system-ui, sans-serif;
     -fx-font-size: 14px;
-    -fx-background-color: #f8fafc;
-
-    /* Custom color variables */
-    -fx-light-bg: #f8fafc;
-    -fx-light-surface: #ffffff;
-    -fx-light-elevated: #f1f5f9;
-    -fx-accent-primary: #6366f1;
-    -fx-accent-secondary: #818cf8;
-    -fx-accent-success: #10b981;
-    -fx-accent-warning: #f59e0b;
-    -fx-accent-danger: #ef4444;
-    -fx-text-primary: #1e293b;
-    -fx-text-secondary: #475569;
-    -fx-text-muted: #94a3b8;
-    -fx-border-subtle: #e2e8f0;
+    -fx-background-color: #FFFFFF;
 }
 
-/* --- Buttons --- */
+/* =============================================================================
+   BUTTONS
+   ============================================================================= */
+
 .button {
-    -fx-background-color: linear-gradient(to bottom, #6366f1, #4f46e5);
+    -fx-background-color: #5865F2;
     -fx-text-fill: white;
     -fx-font-weight: 600;
-    -fx-font-size: 13px;
-    -fx-background-radius: 8;
-    -fx-border-radius: 8;
+    -fx-font-size: 14px;
+    -fx-background-radius: 6;
+    -fx-border-radius: 6;
     -fx-padding: 10 20;
     -fx-cursor: hand;
-    -fx-effect: dropshadow(gaussian, rgba(99, 102, 241, 0.25), 8, 0, 0, 2);
 }
 
 .button:hover {
-    -fx-background-color: linear-gradient(to bottom, #818cf8, #6366f1);
-    -fx-effect: dropshadow(gaussian, rgba(99, 102, 241, 0.4), 12, 0, 0, 3);
+    -fx-background-color: #4752C4;
 }
 
 .button:pressed {
-    -fx-background-color: linear-gradient(to bottom, #4f46e5, #4338ca);
-    -fx-effect: dropshadow(gaussian, rgba(99, 102, 241, 0.15), 4, 0, 0, 1);
+    -fx-background-color: #3C45A5;
 }
 
 #sendButton {
-    -fx-background-color: linear-gradient(to bottom, #10b981, #059669);
-    -fx-effect: dropshadow(gaussian, rgba(16, 185, 129, 0.25), 8, 0, 0, 2);
-    -fx-min-width: 80;
+    -fx-background-color: #43B581;
 }
 
 #sendButton:hover {
-    -fx-background-color: linear-gradient(to bottom, #34d399, #10b981);
-    -fx-effect: dropshadow(gaussian, rgba(16, 185, 129, 0.4), 12, 0, 0, 3);
+    -fx-background-color: #3CA374;
 }
 
 #logoutButton {
-    -fx-background-color: linear-gradient(to bottom, #ef4444, #dc2626);
-    -fx-effect: dropshadow(gaussian, rgba(239, 68, 68, 0.25), 8, 0, 0, 2);
+    -fx-background-color: #F04747;
 }
 
 #logoutButton:hover {
-    -fx-background-color: linear-gradient(to bottom, #f87171, #ef4444);
+    -fx-background-color: #D84040;
 }
 
 #themeToggleButton {
-    -fx-background-color: linear-gradient(to bottom, #64748b, #475569);
-    -fx-effect: dropshadow(gaussian, rgba(100, 116, 139, 0.25), 8, 0, 0, 2);
+    -fx-background-color: #5C6370;
 }
 
 #themeToggleButton:hover {
-    -fx-background-color: linear-gradient(to bottom, #94a3b8, #64748b);
+    -fx-background-color: #4A5058;
 }
 
-/* --- Top Bar --- */
+/* =============================================================================
+   TOP BAR & HEADERS
+   ============================================================================= */
+
 .top-bar {
-    -fx-background-color: #ffffff;
+    -fx-background-color: #FFFFFF;
     -fx-padding: 12 16;
-    -fx-border-color: #e2e8f0;
+    -fx-border-color: #E3E5E8;
     -fx-border-width: 0 0 1 0;
-    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.05), 4, 0, 0, 2);
 }
 
 .user-label {
-    -fx-text-fill: #1e293b;
+    -fx-text-fill: #2E3338;
     -fx-font-weight: 600;
     -fx-font-size: 14px;
 }
 
-/* --- Text Fields & Password Fields --- */
+.title-label {
+    -fx-text-fill: #2E3338;
+    -fx-font-size: 18px;
+    -fx-font-weight: 700;
+}
+
+.hint-label {
+    -fx-text-fill: #5C6370;
+    -fx-font-size: 12px;
+}
+
+/* =============================================================================
+   TEXT FIELDS
+   ============================================================================= */
+
 .text-field, .password-field {
-    -fx-background-color: #ffffff;
-    -fx-border-color: #e2e8f0;
+    -fx-background-color: #F2F3F5;
+    -fx-border-color: #E3E5E8;
     -fx-border-width: 1;
-    -fx-background-radius: 10;
-    -fx-border-radius: 10;
-    -fx-padding: 12 16;
-    -fx-prompt-text-fill: #94a3b8;
-    -fx-text-fill: #1e293b;
-    -fx-highlight-fill: #6366f1;
-    -fx-highlight-text-fill: white;
+    -fx-background-radius: 6;
+    -fx-border-radius: 6;
+    -fx-padding: 12 14;
+    -fx-prompt-text-fill: #8E9297;
+    -fx-text-fill: #2E3338;
 }
 
 .text-field:focused, .password-field:focused {
-    -fx-border-color: #6366f1;
+    -fx-border-color: #5865F2;
     -fx-border-width: 2;
-    -fx-background-color: #ffffff;
-    -fx-effect: dropshadow(gaussian, rgba(99, 102, 241, 0.15), 8, 0, 0, 0);
+    -fx-background-color: #FFFFFF;
 }
 
-/* Message input field specific styling */
 .message-field {
-    -fx-background-radius: 24;
-    -fx-border-radius: 24;
-    -fx-padding: 12 20;
-    -fx-background-color: #f1f5f9;
-    -fx-border-color: #e2e8f0;
+    -fx-background-radius: 20;
+    -fx-border-radius: 20;
+    -fx-padding: 10 16;
 }
 
-.message-field:focused {
-    -fx-background-color: #ffffff;
-    -fx-border-color: #6366f1;
-}
+/* =============================================================================
+   TEXT AREAS
+   ============================================================================= */
 
-/* --- Text Areas (for key display, etc.) --- */
 .text-area {
-    -fx-background-color: #ffffff;
-    -fx-border-color: #e2e8f0;
-    -fx-border-radius: 10;
-    -fx-background-radius: 10;
-    -fx-text-fill: #1e293b;
-    -fx-prompt-text-fill: #94a3b8;
+    -fx-background-color: #F2F3F5;
+    -fx-border-color: #E3E5E8;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-text-fill: #2E3338;
 }
 
 .text-area .content {
-    -fx-background-color: #ffffff;
-    -fx-background-radius: 10;
+    -fx-background-color: #F2F3F5;
+    -fx-background-radius: 6;
 }
 
 .text-area:focused {
-    -fx-border-color: #6366f1;
+    -fx-border-color: #5865F2;
 }
 
 .state-view {
     -fx-font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
     -fx-font-size: 12px;
-    -fx-background-color: #f8fafc;
-    -fx-text-fill: #6366f1;
 }
 
-.state-view .content {
-    -fx-background-color: #f8fafc;
-}
+/* =============================================================================
+   LABELS
+   ============================================================================= */
 
-/* --- Labels --- */
 .label {
-    -fx-text-fill: #1e293b;
+    -fx-text-fill: #2E3338;
     -fx-font-size: 14px;
 }
 
-.title-label {
-    -fx-font-size: 18px;
-    -fx-font-weight: 700;
-    -fx-text-fill: #1e293b;
-}
+/* =============================================================================
+   SPLIT PANE
+   ============================================================================= */
 
-.hint-label {
-    -fx-text-fill: #64748b;
-    -fx-font-size: 12px;
-}
-
-/* --- Split Pane --- */
 .split-pane {
-    -fx-background-color: #f8fafc;
+    -fx-background-color: #FFFFFF;
     -fx-padding: 0;
 }
 
 .split-pane > .split-pane-divider {
-    -fx-background-color: #e2e8f0;
+    -fx-background-color: #E3E5E8;
     -fx-padding: 0 1 0 0;
 }
 
-/* --- Left Panel (Chat List) --- */
+/* =============================================================================
+   PANELS
+   ============================================================================= */
+
 #leftBox, .chat-list-pane {
-    -fx-background-color: #f8fafc; /* Lighter than main background */
-    -fx-border-color: #e2e8f0;
+    -fx-background-color: #F2F3F5;
+    -fx-border-color: #E3E5E8;
     -fx-border-width: 0 1 0 0;
 }
 
-/* --- Right Panel (Messages) --- */
 #rightBox {
-    -fx-background-color: #f8fafc;
+    -fx-background-color: #FFFFFF;
 }
 
-/* --- List Views --- */
+/* =============================================================================
+   LIST VIEWS
+   ============================================================================= */
+
 .list-view {
     -fx-background-color: transparent;
     -fx-border-width: 0;
-    -fx-background-radius: 12;
 }
 
 .list-view .scroll-bar:vertical,
@@ -210,45 +199,95 @@
 
 .list-view .scroll-bar:vertical .thumb,
 .list-view .scroll-bar:horizontal .thumb {
-    -fx-background-color: #cbd5e1;
+    -fx-background-color: #C4C9CE;
     -fx-background-radius: 4;
 }
 
-.list-view .scroll-bar:vertical .thumb:hover,
-.list-view .scroll-bar:horizontal .thumb:hover {
-    -fx-background-color: #94a3b8;
+.list-view .scroll-bar:vertical .thumb:hover {
+    -fx-background-color: #A3A6AA;
 }
 
-/* --- Chat List Cells --- */
+/* =============================================================================
+   CHAT LIST CELLS
+   ============================================================================= */
+
 .list-cell {
-    -fx-padding: 12 16;
-    -fx-text-fill: #1e293b;
+    -fx-padding: 8 12;
+    -fx-text-fill: #2E3338;
     -fx-background-color: transparent;
     -fx-border-color: transparent;
     -fx-font-size: 14px;
-    -fx-background-radius: 8;
-    -fx-border-radius: 8;
-    -fx-border-insets: 4;
-    -fx-background-insets: 4;
+    -fx-background-radius: 6;
+    -fx-background-insets: 2 8;
 }
 
 .list-cell:filled:hover {
-    -fx-background-color: #f1f5f9;
-    -fx-text-fill: #1e293b;
+    -fx-background-color: #E3E5E8;
 }
 
 .list-cell:filled:selected {
-    -fx-background-color: #6366f1;
-    -fx-text-fill: white;
+    -fx-background-color: #5865F2;
 }
 
 .list-cell:filled:selected:hover {
-    -fx-background-color: #4f46e5;
+    -fx-background-color: #4752C4;
 }
 
-/* --- Messages View --- */
+/* =============================================================================
+   CHAT LIST CELL LABELS
+   ============================================================================= */
+
+.chat-name-label {
+    -fx-text-fill: #2E3338;
+    -fx-font-weight: 600;
+    -fx-font-size: 14px;
+}
+
+.chat-name-unselected {
+    -fx-text-fill: #2E3338;
+    -fx-font-weight: 600;
+    -fx-font-size: 14px;
+}
+
+.chat-status-label {
+    -fx-text-fill: #5C6370;
+    -fx-font-size: 12px;
+}
+
+.chat-status-unselected {
+    -fx-text-fill: #5C6370;
+    -fx-font-size: 12px;
+}
+
+.chat-avatar-circle {
+    -fx-stroke: #E3E5E8;
+    -fx-stroke-width: 2;
+}
+
+.chat-avatar-text {
+    -fx-fill: white;
+    -fx-font-size: 16px;
+}
+
+.chat-rename-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: #5C6370;
+    -fx-padding: 4 8;
+    -fx-background-radius: 4;
+    -fx-font-size: 14px;
+}
+
+.chat-rename-button:hover {
+    -fx-background-color: #E3E5E8;
+    -fx-text-fill: #2E3338;
+}
+
+/* =============================================================================
+   MESSAGES VIEW
+   ============================================================================= */
+
 .messages-view {
-    -fx-background-color: #f8fafc;
+    -fx-background-color: #FFFFFF;
 }
 
 .messages-view .list-cell,
@@ -262,62 +301,65 @@
     -fx-padding: 0;
 }
 
-/* --- Message Bubbles --- */
+/* =============================================================================
+   MESSAGE BUBBLES
+   ============================================================================= */
+
 .message-bubble {
     -fx-background-radius: 18;
-    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.08), 4, 0, 0, 2);
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.08), 4, 0, 0, 1);
 }
 
 .message-bubble.incoming {
-    -fx-background-color: #ffffff;
+    -fx-background-color: #F2F3F5;
     -fx-background-radius: 18 18 18 4;
-    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.1), 6, 0, 0, 2);
 }
 
 .message-bubble.outgoing {
-    -fx-background-color: linear-gradient(to bottom right, #6366f1, #4f46e5);
+    -fx-background-color: #5865F2;
     -fx-background-radius: 18 18 4 18;
 }
 
 .message-bubble.pending {
-    -fx-background-color: linear-gradient(to bottom right, #818cf8, #6366f1);
+    -fx-background-color: #7289DA;
     -fx-opacity: 0.85;
 }
 
-/* Message text - use specific classes since JavaFX doesn't support descendant selectors well */
+/* =============================================================================
+   MESSAGE TEXT & META
+   ============================================================================= */
+
 .message-text {
     -fx-font-size: 14px;
     -fx-line-spacing: 2;
 }
 
 .message-text-incoming {
-    -fx-text-fill: #1e293b;
+    -fx-text-fill: #2E3338;
 }
 
 .message-text-outgoing {
-    -fx-text-fill: #ffffff;
+    -fx-text-fill: #FFFFFF;
 }
 
-/* Timestamp */
 .message-time {
     -fx-font-size: 11px;
 }
 
 .message-time-incoming {
-    -fx-text-fill: #64748b;
+    -fx-text-fill: #5C6370;
 }
 
 .message-time-outgoing {
-    -fx-text-fill: rgba(255, 255, 255, 0.75);
+    -fx-text-fill: rgba(255, 255, 255, 0.7);
 }
 
-/* Status indicators */
 .message-status {
     -fx-font-size: 12px;
 }
 
 .status-pending {
-    -fx-text-fill: #f59e0b;
+    -fx-text-fill: #FAA61A;
 }
 
 .status-sent {
@@ -325,30 +367,36 @@
 }
 
 .status-delivered {
-    -fx-text-fill: #34d399;
+    -fx-text-fill: #43B581;
 }
 
-/* --- Chat Header --- */
+/* =============================================================================
+   CHAT HEADER
+   ============================================================================= */
+
 .chat-header {
-    -fx-background-color: #ffffff;
-    -fx-border-color: #e2e8f0;
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #E3E5E8;
     -fx-border-width: 0 0 1 0;
 }
 
 .recipient-label {
-    -fx-text-fill: #1e293b;
+    -fx-text-fill: #2E3338;
     -fx-font-size: 16px;
     -fx-font-weight: 700;
 }
 
 .connection-status-label {
-    -fx-text-fill: #10b981;
+    -fx-text-fill: #43B581;
     -fx-font-size: 12px;
 }
 
-/* Avatar styling */
+/* =============================================================================
+   AVATAR
+   ============================================================================= */
+
 .avatar-circle {
-    -fx-stroke: #e2e8f0;
+    -fx-stroke: #E3E5E8;
     -fx-stroke-width: 2;
 }
 
@@ -357,39 +405,48 @@
     -fx-font-weight: 700;
 }
 
-/* --- Separator --- */
+/* =============================================================================
+   SEPARATOR
+   ============================================================================= */
+
 .separator .line {
-    -fx-border-color: #e2e8f0;
+    -fx-border-color: #E3E5E8;
     -fx-border-width: 1 0 0 0;
 }
 
-/* --- Dialog Panes --- */
+/* =============================================================================
+   DIALOG PANES
+   ============================================================================= */
+
 .dialog-pane {
-    -fx-background-color: #ffffff;
-    -fx-background-radius: 12;
+    -fx-background-color: #FFFFFF;
+    -fx-background-radius: 8;
 }
 
 .dialog-pane > .content {
-    -fx-background-color: #ffffff;
+    -fx-background-color: #FFFFFF;
 }
 
 .dialog-pane > .button-bar > .container {
-    -fx-background-color: #ffffff;
+    -fx-background-color: #FFFFFF;
 }
 
 .dialog-pane .header-panel {
-    -fx-background-color: #f8fafc;
+    -fx-background-color: #F2F3F5;
 }
 
 .dialog-pane .header-panel .label {
-    -fx-text-fill: #1e293b;
+    -fx-text-fill: #2E3338;
 }
 
 .dialog-pane .content .label {
-    -fx-text-fill: #1e293b;
+    -fx-text-fill: #2E3338;
 }
 
-/* --- Scroll Panes --- */
+/* =============================================================================
+   SCROLL PANES
+   ============================================================================= */
+
 .scroll-pane {
     -fx-background-color: transparent;
 }
@@ -398,70 +455,26 @@
     -fx-background-color: transparent;
 }
 
-/* --- Tooltip --- */
+/* =============================================================================
+   TOOLTIP
+   ============================================================================= */
+
 .tooltip {
-    -fx-background-color: #1e293b;
-    -fx-text-fill: #ffffff;
-    -fx-background-radius: 6;
-    -fx-border-radius: 6;
+    -fx-background-color: #2E3338;
+    -fx-text-fill: #FFFFFF;
+    -fx-background-radius: 4;
     -fx-padding: 8 12;
     -fx-font-size: 12px;
 }
 
-/* --- Input Bar Container --- */
+/* =============================================================================
+   INPUT BAR
+   ============================================================================= */
+
 #inputBar {
-    -fx-background-color: #ffffff;
+    -fx-background-color: #FFFFFF;
     -fx-padding: 12 16;
-    -fx-background-radius: 0;
-    -fx-border-color: #e2e8f0;
+    -fx-border-color: #E3E5E8;
     -fx-border-width: 1 0 0 0;
 }
-
-/* --- Chat List Cell Styling --- */
-.chat-name-label {
-    -fx-text-fill: #1e293b;
-    -fx-font-weight: 600;
-    -fx-font-size: 14px;
-}
-
-.chat-name-unselected {
-    -fx-text-fill: #1e293b;
-    -fx-font-weight: 600;
-    -fx-font-size: 14px;
-}
-
-.chat-status-label {
-    -fx-text-fill: #64748b;
-    -fx-font-size: 11px;
-}
-
-.chat-status-unselected {
-    -fx-text-fill: #64748b;
-    -fx-font-size: 11px;
-}
-
-.chat-avatar-circle {
-    -fx-stroke: rgba(0, 0, 0, 0.1);
-    -fx-stroke-width: 2;
-}
-
-.chat-avatar-text {
-    -fx-fill: white;
-    -fx-font-size: 16px;
-}
-
-/* --- Rename Button in Chat List --- */
-.chat-rename-button {
-    -fx-background-color: transparent;
-    -fx-text-fill: #64748b;
-    -fx-padding: 4 8;
-    -fx-background-radius: 6;
-    -fx-font-size: 14px;
-}
-
-.chat-rename-button:hover {
-    -fx-background-color: #e2e8f0;
-    -fx-text-fill: #1e293b;
-}
-
 

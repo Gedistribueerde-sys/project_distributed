@@ -5,29 +5,28 @@
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.PasswordField?>
 <?import javafx.scene.control.TextField?>
-<?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.layout.Region?>
 
 <VBox xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="org.example.controller.RegisterController"
-      alignment="CENTER" prefHeight="420.0" prefWidth="420.0" spacing="16"
+      alignment="CENTER" prefHeight="500.0" prefWidth="400.0" spacing="16"
       styleClass="root" stylesheets="@styles.css">
     <padding>
-        <Insets bottom="32.0" left="40.0" right="40.0" top="32.0"/>
+        <Insets bottom="40.0" left="48.0" right="48.0" top="40.0"/>
     </padding>
     <children>
         <!-- Header -->
         <VBox alignment="CENTER" spacing="8">
             <Label text="✨" style="-fx-font-size: 48px;"/>
-            <Label text="Create Account" styleClass="title-label"/>
+            <Label text="Create Account" styleClass="title-label" style="-fx-font-size: 24px;"/>
             <Label text="Join SecureChat today" styleClass="hint-label"/>
         </VBox>
 
-        <Region prefHeight="16"/>
+        <Region prefHeight="24"/>
 
         <!-- Form Fields -->
-        <VBox spacing="12">
+        <VBox spacing="12" maxWidth="300">
             <TextField fx:id="usernameField" promptText="Choose a username" prefHeight="44"/>
             <PasswordField fx:id="passwordField" promptText="Create password" prefHeight="44"/>
             <PasswordField fx:id="confirmPasswordField" onAction="#handleRegister"
@@ -37,16 +36,16 @@
         <Region prefHeight="8"/>
 
         <!-- Buttons -->
-        <VBox spacing="10">
+        <VBox spacing="12" maxWidth="300">
             <Button fx:id="registerButton" onAction="#handleRegister" text="Create Account"
                     maxWidth="Infinity" prefHeight="44"/>
             <Button fx:id="backButton" onAction="#handleBackButtonAction" text="← Back"
                     maxWidth="Infinity" prefHeight="40"
-                    style="-fx-background-color: transparent; -fx-text-fill: #64748b;"/>
+                    style="-fx-background-color: transparent; -fx-text-fill: #5C6370;"/>
         </VBox>
 
         <!-- Status -->
-        <Label fx:id="statusLabel" styleClass="hint-label" style="-fx-text-fill: #ef4444;" wrapText="true"/>
+        <Label fx:id="statusLabel" styleClass="hint-label" style="-fx-text-fill: #F04747;" wrapText="true"/>
     </children>
 </VBox>
 

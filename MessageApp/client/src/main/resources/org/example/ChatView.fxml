@@ -20,9 +20,9 @@
         <VBox fx:id="leftBox" prefWidth="280.0" styleClass="chat-list-pane" spacing="0">
             <children>
                 <!-- Header -->
-                <HBox alignment="CENTER_LEFT" spacing="10" style="-fx-padding: 16 16 12 16;">
+                <HBox alignment="CENTER_LEFT" spacing="10" style="-fx-padding: 16;">
                     <children>
-                        <Label styleClass="title-label" text="Chats"/>
+                        <Label styleClass="title-label" text="💬 Chats"/>
                         <Region HBox.hgrow="ALWAYS"/>
                     </children>
                 </HBox>
@@ -42,7 +42,7 @@
                     <children>
                         <Label fx:id="userLabel" styleClass="user-label" text="Logged in as: "/>
                         <Region HBox.hgrow="ALWAYS"/>
-                        <Button fx:id="themeToggleButton" onAction="#handleThemeToggle" text="🌓 Theme"/>
+                        <Button fx:id="themeToggleButton" onAction="#handleThemeToggle" text="🌓"/>
                         <Button fx:id="logoutButton" onAction="#handleLogout" text="Logout"/>
                     </children>
                 </HBox>
@@ -71,7 +71,7 @@
                         <TextField fx:id="messageField" onAction="#handleSend"
                                    promptText="Type a message..."
                                    styleClass="message-field" HBox.hgrow="ALWAYS"/>
-                        <Button fx:id="sendButton" onAction="#handleSend" text="Send"/>
+                        <Button fx:id="sendButton" text="Send" onAction="#handleSend"/>
                     </children>
                 </HBox>
             </children>

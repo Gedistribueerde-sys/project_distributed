@@ -19,8 +19,8 @@
     <children>
         <!-- Header -->
         <VBox alignment="CENTER_LEFT" spacing="4">
-            <Label text="New Chat" styleClass="title-label"/>
-            <Label text="Set up a secure conversation" styleClass="hint-label"/>
+            <Label text="New Conversation" styleClass="title-label" style="-fx-font-size: 20px;"/>
+            <Label text="Set up a secure chat with someone" styleClass="hint-label"/>
         </VBox>
 
         <Separator/>
@@ -36,14 +36,14 @@
         <!-- Send Key Section -->
         <VBox spacing="10">
             <VBox spacing="4">
-                <Label text="Your Send Key" style="-fx-font-weight: 600;"/>
-                <Label text="Generate a key and share it with your chat partner so they can receive your messages."
+                <Label text="📤 Your Send Key" style="-fx-font-weight: 600;"/>
+                <Label text="Generate a key and share it with your chat partner."
                        styleClass="hint-label" wrapText="true"/>
             </VBox>
             <HBox spacing="10" alignment="CENTER_LEFT">
                 <Button fx:id="generateSendKeyButton" text="Generate Key" onAction="#handleGenerateSendKey"/>
                 <Button fx:id="copySendKeyButton" text="📋 Copy" onAction="#handleCopySendKey" disable="true"
-                        style="-fx-background-color: #10b981;"/>
+                        style="-fx-background-color: #23A559;"/>
             </HBox>
             <TextArea fx:id="sendKeyDisplay" editable="false" wrapText="true" prefRowCount="2"
                       promptText="Click 'Generate Key' to create your send key" styleClass="state-view"/>
@@ -54,8 +54,8 @@
         <!-- Receive Key Section -->
         <VBox spacing="10">
             <VBox spacing="4">
-                <Label text="Partner's Key" style="-fx-font-weight: 600;"/>
-                <Label text="Paste the key you received from your chat partner to receive their messages."
+                <Label text="📥 Partner's Key" style="-fx-font-weight: 600;"/>
+                <Label text="Paste the key you received from your chat partner."
                        styleClass="hint-label" wrapText="true"/>
             </VBox>
             <TextArea fx:id="receiveKeyArea" promptText="Paste their key here (leave empty for send-only chat)"
@@ -68,10 +68,11 @@
 
         <!-- Action Buttons -->
         <HBox spacing="12" alignment="CENTER">
-            <Button fx:id="createChatButton" text="✓ Create Chat" onAction="#handleCreateChat"
+            <Button fx:id="createChatButton" text="Create Chat" onAction="#handleCreateChat"
                     maxWidth="Infinity" HBox.hgrow="ALWAYS" prefHeight="44"/>
-            <Button fx:id="cancelButton" text="Cancel" onAction="#handleCancel" id="logoutButton"
-                    maxWidth="Infinity" HBox.hgrow="ALWAYS" prefHeight="44"/>
+            <Button fx:id="cancelButton" text="Cancel" onAction="#handleCancel"
+                    maxWidth="Infinity" HBox.hgrow="ALWAYS" prefHeight="44"
+                    style="-fx-background-color: transparent; -fx-border-color: #5C6370; -fx-border-width: 1; -fx-border-radius: 6; -fx-text-fill: #5C6370;"/>
         </HBox>
     </children>
 </VBox>

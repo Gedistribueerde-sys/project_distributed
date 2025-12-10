@@ -5,29 +5,28 @@
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.PasswordField?>
 <?import javafx.scene.control.TextField?>
-<?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.layout.Region?>
 
-<VBox alignment="CENTER" prefHeight="350.0" prefWidth="420.0" spacing="16" styleClass="root"
+<VBox alignment="CENTER" prefHeight="450.0" prefWidth="400.0" spacing="16" styleClass="root"
       stylesheets="@styles.css"
       xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="org.example.controller.LoginController">
     <padding>
-        <Insets bottom="32.0" left="40.0" right="40.0" top="32.0"/>
+        <Insets bottom="40.0" left="48.0" right="48.0" top="40.0"/>
     </padding>
     <children>
         <!-- Header -->
         <VBox alignment="CENTER" spacing="8">
-            <Label text="🔐" style="-fx-font-size: 48px;"/>
-            <Label text="Welcome Back" styleClass="title-label"/>
+            <Label text="👋" style="-fx-font-size: 48px;"/>
+            <Label text="Welcome Back" styleClass="title-label" style="-fx-font-size: 24px;"/>
             <Label text="Sign in to continue" styleClass="hint-label"/>
         </VBox>
 
-        <Region prefHeight="16"/>
+        <Region prefHeight="24"/>
 
         <!-- Form Fields -->
-        <VBox spacing="12">
+        <VBox spacing="12" maxWidth="300">
             <TextField fx:id="usernameField" promptText="Username" prefHeight="44"/>
             <PasswordField fx:id="passwordField" onAction="#handleLogin" promptText="Password" prefHeight="44"/>
         </VBox>
@@ -35,15 +34,16 @@
         <Region prefHeight="8"/>
 
         <!-- Buttons -->
-        <VBox spacing="10">
+        <VBox spacing="12" maxWidth="300">
             <Button fx:id="loginButton" onAction="#handleLogin" text="Sign In"
                     maxWidth="Infinity" prefHeight="44"/>
             <Button fx:id="backButton" onAction="#handleBackButtonAction" text="← Back"
-                    maxWidth="Infinity" prefHeight="40" style="-fx-background-color: transparent; -fx-text-fill: #64748b;"/>
+                    maxWidth="Infinity" prefHeight="40"
+                    style="-fx-background-color: transparent; -fx-text-fill: #5C6370;"/>
         </VBox>
 
         <!-- Status -->
-        <Label fx:id="statusLabel" styleClass="hint-label" style="-fx-text-fill: #ef4444;"/>
+        <Label fx:id="statusLabel" styleClass="hint-label" style="-fx-text-fill: #F04747;" wrapText="true"/>
     </children>
 </VBox>
 

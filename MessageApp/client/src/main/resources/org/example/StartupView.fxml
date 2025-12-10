@@ -9,22 +9,22 @@
 <VBox xmlns="http://javafx.com/javafx/17"
       xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="org.example.controller.StartupController"
-      alignment="CENTER" spacing="16" prefWidth="420" prefHeight="400"
+      alignment="CENTER" spacing="16" prefWidth="400" prefHeight="500"
       styleClass="root" stylesheets="@styles.css">
     <padding>
-        <Insets top="40" right="40" bottom="40" left="40"/>
+        <Insets top="48" right="48" bottom="48" left="48"/>
     </padding>
 
     <!-- App Logo/Icon -->
-    <Label text="💬" style="-fx-font-size: 64px;"/>
+    <Label text="💬" style="-fx-font-size: 72px;"/>
 
     <!-- App Name -->
-    <VBox alignment="CENTER" spacing="4">
-        <Label text="SecureChat" styleClass="title-label" style="-fx-font-size: 28px;"/>
-        <Label text="End-to-end encrypted messaging" styleClass="hint-label"/>
+    <VBox alignment="CENTER" spacing="8">
+        <Label text="SecureChat" styleClass="title-label" style="-fx-font-size: 32px;"/>
+        <Label text="End-to-end encrypted messaging" styleClass="hint-label" style="-fx-font-size: 14px;"/>
     </VBox>
 
-    <Region prefHeight="24"/>
+    <Region prefHeight="32"/>
 
     <!-- Action Buttons -->
     <VBox spacing="12" alignment="CENTER" maxWidth="280">
@@ -32,7 +32,7 @@
                 maxWidth="Infinity" prefHeight="48"/>
         <Button text="Create Account" onAction="#handleRegisterButtonAction"
                 maxWidth="Infinity" prefHeight="48"
-                style="-fx-background-color: transparent; -fx-border-color: #6366f1; -fx-border-width: 2; -fx-text-fill: #6366f1;"/>
+                style="-fx-background-color: transparent; -fx-border-color: #5865F2; -fx-border-width: 2; -fx-border-radius: 6; -fx-text-fill: #5865F2;"/>
     </VBox>
 
     <Region VBox.vgrow="ALWAYS"/>

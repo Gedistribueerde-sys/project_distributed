@@ -98,20 +98,15 @@ public class ChatListCell extends ListCell<String> {
      */
     private void updateTextColors(boolean isSelected) {
         if (isSelected) {
-            // Selected: add selected class, white text on colored background
+            // Selected: white text on colored background
             nameLabel.getStyleClass().removeAll("chat-name-unselected");
             statusLabel.getStyleClass().removeAll("chat-status-unselected");
-            nameLabel.getStyleClass().add("chat-name-selected");
-            statusLabel.getStyleClass().add("chat-status-selected");
 
-            // Use inline for selected since it needs to override CSS
-            nameLabel.setStyle("-fx-text-fill: white; -fx-font-weight: 800; -fx-font-size: 14px;");
-            statusLabel.setStyle("-fx-text-fill: rgba(255,255,255,0.9); -fx-font-size: 11px; -fx-font-weight: 600;");
-            renameButton.setStyle("-fx-text-fill: rgba(255,255,255,0.85); -fx-background-color: transparent;");
+            nameLabel.setStyle("-fx-text-fill: white; -fx-font-weight: 700; -fx-font-size: 14px;");
+            statusLabel.setStyle("-fx-text-fill: rgba(255,255,255,0.85); -fx-font-size: 12px;");
+            renameButton.setStyle("-fx-text-fill: rgba(255,255,255,0.8); -fx-background-color: transparent;");
         } else {
-            // Not selected: remove selected class, use CSS-controlled colors
-            nameLabel.getStyleClass().removeAll("chat-name-selected");
-            statusLabel.getStyleClass().removeAll("chat-status-selected");
+            // Not selected: use CSS class for theme-aware colors
             nameLabel.getStyleClass().add("chat-name-unselected");
             statusLabel.getStyleClass().add("chat-status-unselected");
 
