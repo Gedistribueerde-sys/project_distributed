@@ -12,7 +12,7 @@ Represents the state of a single chat with another user. It holds the sending an
 
 ## `DatabaseManager.java`
 
-Manages the local SQLite database for each user. It stores encrypted chat states and messages.
+Manages the local SQLite database for each user. The entire database file is encrypted using a key derived from the user's password, which is stored in a Java Keystore.
 
 - **`upsertChatState(...)`**: Saves or updates a chat state in the database.
 - **`getChatState(...)`**: Retrieves a chat state from the database.
@@ -23,15 +23,35 @@ Manages the local SQLite database for each user. It stores encrypted chat states
 - **`getPendingOutboxMessages()`**: Retrieves messages that have not yet been sent to the server.
 - **`markMessageAsSentAndUpdateState(...)`**: Transactionally marks a message as sent and updates the chat state.
 - **`addReceivedMessageAndUpdateState(...)`**: Transactionally adds a received message and updates the chat state.
+- **`saveUserUuid(...)`**: Saves the user's UUID to the database.
+- **`getUserUuid()`**: Retrieves the user's UUID from the database.
+- **`renameChat(...)`**: Renames a chat session.
+- **`saveProposedSendValues(...)`**: Saves the proposed next state values for a sent message.
+- **`getUnconfirmedMessages()`**: Retrieves all unconfirmed received messages.
+- **`deletePendingConfirmation(...)`**: Deletes a pending confirmation entry after the message has been confirmed.
+
+### Database Schema
+The client's database (`user_<username>.db`) contains the following tables:
+- `user_settings`: Stores user-specific settings, like the user's UUID.
+- `chat_sessions`: Stores the state of each chat session, including keys, indexes, and tags.
+- `messages`: Stores all messages, both sent and received. It also includes columns to support the two-phase send protocol (`proposed_next_idx`, `proposed_next_tag`, `proposed_next_key`).
+- `pending_confirmations`: Stores information about received messages that have been processed by the client but not yet confirmed with the server. This ensures that the client can recover from a crash and confirm the messages later.
+
 
 ## `InAndOutBox.java`
 
-A runnable class that processes the outbox and inbox. It sends pending messages to the bulletin board and retrieves new messages. It also handles retries and connection management.
+A multi-threaded runnable class that processes the outbox and inbox. It is responsible for all communication with the server.
 
+- **Multi-threaded Processing**: It uses separate threads for sending messages, fetching messages for the active chat (low latency), and fetching messages for background chats. This ensures that the UI remains responsive and that messages are sent and received efficiently.
+- **Two-Phase Send**: To ensure idempotent retries, sending a message is a two-phase process. First, the proposed next state (next index, tag, and key) is persisted to the database. Then, the message is sent to the server. If the send fails, it can be retried later using the same persisted state.
+- **Proof-of-Work**: Before sending a message, it computes a proof of work using `ProofOfWork.computeProof`. This is required by the server to prevent abuse.
+- **Two-Phase Receive**: Receiving a message is also a two-phase process. First, the message is fetched from the server using `get`. After the client has processed the message, it is stored in a `pending_confirmations` table. A separate process then confirms the message with the server using `confirm`.
+- **Error Handling**: It implements exponential backoff for retries when the server is unavailable. It also has a "poison pill" mechanism to handle messages that cannot be decrypted, preventing a chat from getting stuck.
 - **`run()`**: The main loop of the processor thread.
 - **`ensureConnected()`**: Ensures a connection to the RMI bulletin board is established.
 - **`processOneOutboxMessageSafely()`**: Processes one message from the outbox.
-- **`processOneInboxMessageSafely()`**: Processes one message from the inbox.
+- **`processActiveChatMessage()`**: Processes messages for the currently active chat.
+- **`processBackgroundInboxMessages()`**: Processes inbox messages for all non-active chats.
 
 ---
 
@@ -94,10 +114,11 @@ Manages the user's keystore, which stores the database encryption key.
 - **`makeKeyStore(...)`**: Creates a new keystore for a user.
 - **`loadKeyStore(...)`**: Loads an existing keystore.
 - **`getDatabaseKey()`**: Retrieves the database encryption key.
-
 ---
 
 ## `GUI` package
+
+This package contains all the JavaFX GUI components.
 
 ### `GUI.java`
 
@@ -105,8 +126,21 @@ The main JavaFX application class. It manages the different scenes (startup, log
 
 ### `Message.java`
 
-A simple record representing a chat message.
+A record that represents a chat message. It contains the sender, the text, whether it was sent by the user, the status of the message, and a timestamp.
+
+- **`MessageStatus`**: An enum representing the status of a sent message:
+    - `PENDING`: The message is waiting to be sent to the server.
+    - `SENT`: The message has been successfully sent to the server.
+    - `DELIVERED`: The message has been received by the recipient.
 
 ### `MessageCell.java`
 
-A custom `ListCell` for displaying chat messages in a bubble format.
+A custom `ListCell` for displaying chat messages in a bubble format. It handles the layout of incoming and outgoing messages, including the message text, timestamp, and status indicator. It also displays a colored avatar with the first letter of the sender's name for incoming messages.
+
+### `ChatState.java`
+
+This class holds the state of a chat with a specific recipient. It contains:
+- The recipient's name and UUID.
+- The sending and receiving keys, indexes, and tags.
+- A list of messages in the chat.
+- A `poisonedBackoffUntil` timestamp. If a message from a chat cannot be decrypted, this timestamp is set to a future time to prevent the client from repeatedly trying to process a "poisoned" message.

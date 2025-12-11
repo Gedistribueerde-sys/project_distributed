@@ -4,21 +4,21 @@ This document outlines the key architectural decisions made in the development o
 
 ## Overview
 
-The application follows a **client-server architecture** with a strong emphasis on client-side intelligence.
+The application follows a **client-server architecture** implemented in Java.
 
--   **Server**: A minimalist, stateless bulletin board implemented using Java RMI. Its sole responsibility is to accept encrypted messages and deliver them to the intended recipient upon request. It does not persist messages after they are retrieved.
+-   **Server**: A stateful, persistent, and scalable bulletin board implemented using Java RMI. It is responsible for accepting encrypted messages, requiring proof of work, and delivering them to the intended recipient upon request. It uses a two-phase commit protocol for message retrieval and persists messages in a local SQLite database to ensure reliability and scalability.
 -   **Client**: A JavaFX desktop application that contains all the core logic. It manages user accounts, cryptographic keys, secure chat sessions, and local data persistence.
 -   **Shared Library**: A common module containing the RMI interface, data transfer objects (DTOs), and protocol definitions (Protobuf) shared between the client and server.
 
 ## Key Architectural Decisions
 
-### 1. Dumb Server, Smart Client
+### 1. Stateful Server, Smart Client
 
-The design intentionally keeps the server as simple as possible.
+The design balances the responsibilities between the client and the server.
 
 -   **Rationale**:
-    -   **Security**: The server stores no sensitive user data, minimizing the impact of a server-side breach. All encryption and key management happens on the client.
-    -   **Scalability & Simplicity**: A stateless server is easier to scale and maintain. The complexity is managed on the client side, isolating user data to their own devices.
+    -   **Security**: While the server is stateful, it only stores encrypted data. All encryption and key management happens on the client, minimizing the impact of a server-side breach.
+    -   **Scalability & Reliability**: The server's stateful nature, combined with its "Board Generations" resizing strategy and two-phase commit protocol, allows it to be both scalable and reliable. The complexity is managed on both the client and server side.
 
 ### 2. Java RMI for Client-Server Communication
 
@@ -44,7 +44,15 @@ Each user has a password-protected PKCS#12 keystore. This keystore holds a maste
     -   **Strong Security**: The keystore provides a robust, standard-based mechanism for protecting the user's most critical key. Access to any user data requires the keystore password.
     -   **Layered Encryption**: This creates a two-layer encryption scheme: the chat keys are encrypted in the database, and the entire database is encrypted by a key from the keystore.
 
-### 5. Protocol Buffers (Protobuf) for Serialization
+### 5. Proof-of-Work to Prevent Abuse
+
+The server requires clients to perform a proof-of-work calculation before a message can be added to the bulletin board.
+
+-   **Rationale**:
+    -   **DDoS Mitigation**: This significantly raises the cost for an attacker to spam the server or conduct a denial-of-service attack, as each message requires a non-trivial amount of computation.
+    -   **Fairness**: It ensures that server resources are allocated to legitimate users.
+
+### 6. Protocol Buffers (Protobuf) for Serialization
 
 The payload of each chat message (the actual message content and the next-step information for the hash chain) is serialized using Google's Protocol Buffers.
 
@@ -52,15 +60,16 @@ The payload of each chat message (the actual message content and the next-step i
     -   **Efficiency**: Protobuf is a compact and efficient binary format, reducing the size of the data transmitted to the server.
     -   **Clarity & Evolution**: The message structure is clearly defined in a `.proto` file, which serves as self-documenting and allows for easier evolution of the protocol over time.
 
-### 6. Asynchronous Messaging with a Bulletin Board Model
+### 7. Asynchronous Messaging with a Reliable Bulletin Board Model
 
 Clients do not communicate directly. Instead, they post encrypted messages to a public bulletin board (the server) and retrieve them from it. A background thread on the client (`InAndOutBox`) handles the sending and receiving of messages.
 
 -   **Rationale**:
     -   **Decoupling**: Senders and receivers do not need to be online at the same time.
-    -   **Resilience**: The background thread can retry sending or receiving messages if the server is temporarily unavailable, improving the reliability of message delivery.
+    -   **Reliability**: The server uses a two-phase commit (`get`/`confirm`) protocol for message retrieval. A message is only removed from the board after the client has confirmed its receipt. An automated cleanup task on the server handles orphaned messages that are checked out but never confirmed.
+    -   **Resilience**: The background thread on the client can retry sending or receiving messages if the server is temporarily unavailable, improving the reliability of message delivery.
 
-### 7. Hash-Chain Protocol for Forward Secrecy
+### 8. Hash-Chain Protocol for Forward Secrecy
 
 The core of the secure messaging protocol is a hash-chain mechanism. For each message sent, the symmetric encryption key is updated by hashing it.
 
