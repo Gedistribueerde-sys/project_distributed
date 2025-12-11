@@ -8,7 +8,6 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Region?>
-<?import javafx.scene.image.Image?>
 <?import javafx.scene.image.ImageView?>
 
 <VBox alignment="CENTER" prefHeight="450.0" prefWidth="400.0" spacing="16" styleClass="root"
