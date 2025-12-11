@@ -8,24 +8,14 @@ import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.SecureRandom;
 
-/**
- * Utility class for encrypting/decrypting data with AES-GCM.
- * Used to protect sensitive data at rest (database encryption).
- */
+// Utility class for AES-GCM encryption and decryption with AAD support
 public final class CryptoUtils {
     private static final String ALGO = "AES/GCM/NoPadding";
     private static final int IV_LENGTH = 12; // bytes
     private static final int TAG_LENGTH_BITS = 128;
     private static final SecureRandom RANDOM = new SecureRandom();
 
-    /**
-     * Encrypts plaintext and returns IV || ciphertext.
-     *
-     * @param plaintext Data to encrypt
-     * @param key       Encryption key
-     * @param aad       Additional authenticated data (e.g., username:recipient)
-     * @return IV prepended to ciphertext
-     */
+    // Encrypts data producing IV || ciphertext format.
     public static byte[] encrypt(byte[] plaintext, SecretKey key, byte[] aad) throws GeneralSecurityException {
         byte[] iv = new byte[IV_LENGTH];
         RANDOM.nextBytes(iv);
@@ -41,14 +31,7 @@ public final class CryptoUtils {
         return ByteBuffer.allocate(iv.length + ct.length).put(iv).put(ct).array();
     }
 
-    /**
-     * Decrypts data expecting IV || ciphertext format.
-     *
-     * @param encrypted IV prepended to ciphertext
-     * @param key       Decryption key
-     * @param aad       Additional authenticated data (must match encryption)
-     * @return Decrypted plaintext
-     */
+    // Decrypts data in IV || ciphertext format.
     public static byte[] decrypt(byte[] encrypted, SecretKey key, byte[] aad) throws GeneralSecurityException {
         if (encrypted == null || encrypted.length < IV_LENGTH) {
             throw new GeneralSecurityException("Invalid encrypted payload");
@@ -68,9 +51,7 @@ public final class CryptoUtils {
         return cipher.doFinal(ct);
     }
 
-    /**
-     * Helper to create AAD (Additional Authenticated Data) from username and recipient's UUID.
-     */
+    // Create AAD (additional authentication data) from username and recipient ID
     public static byte[] makeAAD(String username, String recipientId) {
         return (username + ":" + recipientId).getBytes(StandardCharsets.UTF_8);
     }

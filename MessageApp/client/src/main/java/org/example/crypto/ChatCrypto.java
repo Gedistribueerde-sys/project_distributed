@@ -15,6 +15,7 @@ public class ChatCrypto {
     private static final Logger log = LoggerFactory.getLogger(ChatCrypto.class);
     static final private SecureRandom secureRandom = new SecureRandom();
 
+    // Generate a new KeyInfo for initiating a chat (both send and receive)
     public static ChatProto.KeyInfo generateBumpKeyInfo(String senderUuid) throws Exception {
         long initialIdx = makeNewIdx();
         log.info("Generated Chat ID: {}", initialIdx);
@@ -38,15 +39,9 @@ public class ChatCrypto {
         return keyGen.generateKey();
     }
 
-    public static String keyToBase64(SecretKey key) {
-        if (key == null || key.getEncoded() == null) return "-";
-        return Base64.getEncoder().encodeToString(key.getEncoded());
-    }
-
     public static long makeNewIdx() {
-        return secureRandom.nextLong() & Long.MAX_VALUE; // zorg dat het positief is
+        return secureRandom.nextLong() & Long.MAX_VALUE; // makes sure this is positive
     }
-
 
     public static byte[] makeNewTag() {
         byte[] tagBytes = new byte[32];
@@ -58,6 +53,7 @@ public class ChatCrypto {
         return Base64.getEncoder().encodeToString(tagBytes);
     }
 
+    // Encrypt payload using AES-GCM
     public static byte[] encryptPayloadBytes(byte[] payload, SecretKey secretKey) throws Exception {
         Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
 
