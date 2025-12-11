@@ -16,10 +16,10 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Manages SQLite database per user for storing encrypted chat states and messages.
- * All sensitive data (keys, message content) is encrypted at rest using AES-GCM.
- */
+
+ //Manages SQLite database per user for storing encrypted chat states and messages.
+ // All sensitive data (keys, message content) is encrypted at rest using AES-GCM.
+
 public class DatabaseManager {
     private static final Logger log = LoggerFactory.getLogger(DatabaseManager.class);
     private static final Path BASE_DIR = Paths.get("MessageApp", "client", "data");
@@ -258,8 +258,6 @@ public class DatabaseManager {
                 byte[] aad = CryptoUtils.makeAAD(username, recipientUuid);
                 byte[] decContent = CryptoUtils.decrypt(encContent, dbKey, aad);
                 String content = new String(decContent, StandardCharsets.UTF_8);
-
-                // Retrieve proposed values (may be null if not yet set)
                 Long proposedNextIdx = rs.getObject("proposed_next_idx") != null ? rs.getLong("proposed_next_idx") : null;
                 String proposedNextTag = rs.getString("proposed_next_tag");
                 byte[] encProposedKey = rs.getBytes("proposed_next_key");
@@ -274,11 +272,6 @@ public class DatabaseManager {
         return pending;
     }
 
-    /**
-     * Saves the proposed next values for a pending message before attempting to send.
-     * This ensures idempotent retries - if the client crashes after sending but before
-     * updating state, the retry will use the same values.
-     */
     public void saveProposedSendValues(long messageId, String recipientUuid, long proposedNextIdx, String proposedNextTag, byte[] proposedNextKey) {
         String sql = "UPDATE messages SET proposed_next_idx = ?, proposed_next_tag = ?, proposed_next_key = ? WHERE id = ?";
         byte[] aad = CryptoUtils.makeAAD(username, recipientUuid);
