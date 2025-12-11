@@ -8,8 +8,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-
-
 public class ServerDatabaseManager {
     private static final Logger log = LoggerFactory.getLogger(ServerDatabaseManager.class);
     private final String dbUrl;
@@ -75,8 +73,6 @@ public class ServerDatabaseManager {
         return conn;
     }
     public record PersistedMessage(int cellIndex, int boardCapacity, String messageTag, byte[] messageValue) {}
-    // ServerDatabaseManager.java (New Method)
-
     public List<Integer> getAllBoardCapacities() {
         String sql = "SELECT DISTINCT board_capacity FROM bulletin_board";
         List<Integer> capacities = new ArrayList<>();
@@ -95,7 +91,6 @@ public class ServerDatabaseManager {
         return capacities;
     }
     public List<PersistedMessage> loadAllMessagesWithCapacity() {
-        // Note: The SQL must now include board_capacity
         String sql = "SELECT cell_index, board_capacity, message_tag, message_value FROM bulletin_board";
         List<PersistedMessage> messages = new ArrayList<>();
 
@@ -106,7 +101,7 @@ public class ServerDatabaseManager {
             while (rs.next()) {
                 messages.add(new PersistedMessage(
                         rs.getInt("cell_index"),
-                        rs.getInt("board_capacity"), // <-- Retrieve new column
+                        rs.getInt("board_capacity"),
                         rs.getString("message_tag"),
                         rs.getBytes("message_value")
                 ));

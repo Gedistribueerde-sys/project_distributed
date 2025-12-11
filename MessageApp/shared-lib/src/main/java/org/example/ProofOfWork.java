@@ -49,13 +49,11 @@ public class ProofOfWork {
                 digest.reset();
                 digest.update(tagBytes);
                 digest.update(idxBytes);
-
                 ByteBuffer nonceBuffer = ByteBuffer.allocate(Long.BYTES);
                 nonceBuffer.putLong(nonce);
                 digest.update(nonceBuffer.array());
-
                 byte[] hash = digest.digest();
-
+                // Check if hash meets difficulty requirement and return result if so
                 if (hasLeadingZeros(hash, difficultyBits)) {
                     long endTime = System.currentTimeMillis();
                     return new ProofResult(nonce, endTime - startTime);
@@ -107,7 +105,6 @@ public class ProofOfWork {
                 return false;
             }
         }
-
         // Check remaining bits in the next byte
         if (remainingBits > 0 && fullBytes < hash.length) {
             int mask = 0xFF << (8 - remainingBits);
