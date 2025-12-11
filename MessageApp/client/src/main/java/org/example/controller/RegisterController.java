@@ -11,32 +11,26 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import org.example.GUI.GUI;
 
+import java.util.Objects;
+
 public class RegisterController {
 
     @FXML
     private TextField usernameField;
-
     @FXML
     private PasswordField passwordField;
-
     @FXML
     private PasswordField confirmPasswordField;
-
     @FXML
     private Label statusLabel;
-
     @FXML
     private ImageView pageIcon;
-
     @FXML
     private ImageView userFieldIcon;
-
     @FXML
     private ImageView keyFieldIcon;
-
     @FXML
     private ImageView confirmKeyIcon;
-
     @FXML
     private ImageView addUserIcon;
 
@@ -67,9 +61,7 @@ public class RegisterController {
         updateIcons();
     }
 
-    /**
-     * Updates icons based on the current theme.
-     */
+    // Update icons based on the current theme
     private void updateIcons() {
         if (gui == null) return;
         String theme = gui.isDarkTheme() ? "dark_icons" : "light_icons";
@@ -84,10 +76,11 @@ public class RegisterController {
         loadIcon(addUserIcon, colorfulPath + "add-user-white.png");
     }
 
+    // Helper to load an icon into an ImageView
     private void loadIcon(ImageView imageView, String path) {
         if (imageView != null) {
             try {
-                imageView.setImage(new Image(getClass().getResourceAsStream(path)));
+                imageView.setImage(new Image(Objects.requireNonNull(getClass().getResourceAsStream(path))));
             } catch (Exception e) {
                 // Icon loading failed, leave empty
             }
@@ -107,7 +100,7 @@ public class RegisterController {
 
         if (chatCore.register(user, pass)) {
             statusLabel.setText("Registration successful!");
-            gui.showLoginScene(); // Jump to login screen
+            gui.showLoginScene(); // Jump to log in screen
         } else {
             statusLabel.setText("Registration failed (name already exists or is invalid)");
         }

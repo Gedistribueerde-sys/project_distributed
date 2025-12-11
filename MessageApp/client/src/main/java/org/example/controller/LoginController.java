@@ -9,8 +9,11 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import org.example.GUI.GUI;
 
+import java.util.Objects;
+
 public class LoginController {
 
+    // FXML UI components
     @FXML
     private TextField usernameField;
 
@@ -45,9 +48,7 @@ public class LoginController {
     public void initialize() {
     }
 
-    /**
-     * Updates icons based on the current theme.
-     */
+    // Update icons based on the current theme
     private void updateIcons() {
         if (gui == null) return;
         String theme = gui.isDarkTheme() ? "dark_icons" : "light_icons";
@@ -60,10 +61,11 @@ public class LoginController {
         loadIcon(keyFieldIcon, themedPath + "key.png");
     }
 
+    // Helper method to load an icon into an ImageView
     private void loadIcon(ImageView imageView, String path) {
         if (imageView != null) {
             try {
-                imageView.setImage(new Image(getClass().getResourceAsStream(path)));
+                imageView.setImage(new Image(Objects.requireNonNull(getClass().getResourceAsStream(path))));
             } catch (Exception e) {
                 // Icon loading failed, leave empty
             }
