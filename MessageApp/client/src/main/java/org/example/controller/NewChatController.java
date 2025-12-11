@@ -12,8 +12,9 @@ import javafx.stage.Stage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class NewChatController {
+import java.util.Objects;
 
+public class NewChatController {
     private static final Logger log = LoggerFactory.getLogger(NewChatController.class);
 
     @FXML
@@ -50,6 +51,7 @@ public class NewChatController {
         this.chatCore = chatCore;
     }
 
+    // Set the dialog stage and detect theme
     public void setDialogStage(Stage dialogStage) {
         this.dialogStage = dialogStage;
         // Detect theme from stylesheets
@@ -60,13 +62,7 @@ public class NewChatController {
         updateIcons();
     }
 
-    @FXML
-    public void initialize() {
-    }
-
-    /**
-     * Updates icons based on the current theme.
-     */
+    // Update icons based on the current theme
     private void updateIcons() {
         String theme = isDarkTheme ? "dark_icons" : "light_icons";
         String themedPath = "/org/example/icons/" + theme + "/";
@@ -82,10 +78,11 @@ public class NewChatController {
         loadIcon(cancelIcon, colorPath + "cancel-red.png");
     }
 
+    // Helper to load an icon into an ImageView
     private void loadIcon(ImageView imageView, String path) {
         if (imageView != null) {
             try {
-                imageView.setImage(new Image(getClass().getResourceAsStream(path)));
+                imageView.setImage(new Image(Objects.requireNonNull(getClass().getResourceAsStream(path))));
             } catch (Exception e) {
                 log.warn("Could not load icon: {}", path);
             }
@@ -116,7 +113,6 @@ public class NewChatController {
     private void handleCreateChat() {
         String chatName = chatNameField.getText().trim();
         if (chatName.isEmpty()) {
-            // Optionally, show an alert to the user
             log.error("Chat name cannot be empty");
             return;
         }

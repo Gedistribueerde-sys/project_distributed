@@ -31,7 +31,7 @@ public class KeyStoreImpl {
 
             File file = getKeystoreFile(username);
 
-            // als je NIET wil overschrijven:
+            // Check if keystore already exists, do not overwrite
             if (file.exists()) {
                 log.info("Keystore already exists for user {}", username);
                 return false;
@@ -60,6 +60,7 @@ public class KeyStoreImpl {
         }
     }
 
+    // Loads the keystore for the given username and password.
     public boolean loadKeyStore(String username, String password) {
         if (username == null || username.isBlank() || password == null || password.isBlank()) {
             return false;
@@ -85,11 +86,7 @@ public class KeyStoreImpl {
     }
 
 
-    /**
-     * Retrieves the database encryption key from the keystore.
-     *
-     * @return Database encryption key (DEK) or null if not found
-     */
+    // Retrieves the database encryption key from the loaded keystore.
     public SecretKey getDatabaseKey() {
         if (keyStore == null || keystorePassword == null) {
             log.error("Keystore not loaded");
@@ -112,17 +109,15 @@ public class KeyStoreImpl {
         }
     }
 
-    /**
-     * Generates a new AES-256 key for database encryption.
-     */
+    // Generates a new AES database encryption key.
     private SecretKey generateDatabaseKey() throws NoSuchAlgorithmException {
         KeyGenerator keyGen = KeyGenerator.getInstance("AES");
         keyGen.init(256);
         return keyGen.generateKey();
     }
 
+    // Gets the keystore file path for the given username.
     private File getKeystoreFile(String username) throws IOException {
-        // zorg dat de map bestaat
         Files.createDirectories(BASE_DIR);
         Path ksPath = BASE_DIR.resolve(username + EXTENSION);
         log.info("Keystore path for user {}: {}", username, ksPath.toAbsolutePath());

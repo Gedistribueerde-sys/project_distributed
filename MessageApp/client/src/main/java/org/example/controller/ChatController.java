@@ -20,13 +20,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-// java.rmi.RemoteException is nu niet meer nodig
 import java.util.List;
+import java.util.Objects;
 
 public class ChatController {
-
+    // logger to log info / errors
     private static final Logger log = LoggerFactory.getLogger(ChatController.class);
 
+    // fxml elements, see fxml files
     @FXML
     private ListView<String> chatList;
     @FXML
@@ -52,10 +53,9 @@ public class ChatController {
     @FXML
     private ImageView sendIcon;
 
-
-    private ChatCore chatCore;
-    private Stage stage;
-    private GUI gui;
+    private ChatCore chatCore;  // Chat Core contains the main logic of the application
+    private Stage stage; // Main application stage
+    private GUI gui; // GUI manager for theme and scene changes
 
     public void setController(ChatCore chatCore) {
         this.chatCore = chatCore;
@@ -71,10 +71,10 @@ public class ChatController {
 
     @FXML
     public void initialize() {
-        // Use custom ChatListCell for modern styling
+        // ChatListCell is a custom cell factory for the chat list
         chatList.setCellFactory(lv -> new ChatListCell(this::handleRenameChat));
 
-        // This is called after the FXML file has been loaded
+        // This listener handles chat selection changes, dynamically updating the UI
         chatList.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal == null) return;
 
@@ -83,13 +83,13 @@ public class ChatController {
 
             messagesView.getItems().clear();
 
-
             if (selectedIndex == 0) {
                 messagesView.getItems().add(new Message("system", "Use the dialog to start a chat...", true));
                 // Hide buttons for new chat
                 sendButton.setVisible(false);
                 sendButton.setManaged(false);
 
+                // Hide message field
                 messageField.setVisible(false);
                 messageField.setManaged(false);
 
@@ -100,24 +100,31 @@ public class ChatController {
                 // Clear active chat for fast polling
                 chatCore.setActiveChatUuid(null);
 
+                // run later is a function that runs the code on the JavaFX application thread
                 Platform.runLater(() -> {
                     showNewChatDialog();
                     // chatList is updated in showNewChatDialog if successful
                     chatList.getSelectionModel().clearSelection();
                 });
             } else {
-                // A chat is selected, update button visibility based on capabilities
+                // canSendToChat checks if sending is allowed in this chat
                 boolean canSend = chatCore.canSendToChat(selectedIndex);
+
+                // Show or hide send button and message field based on kind of chat
                 sendButton.setVisible(canSend);
                 sendButton.setManaged(canSend);
+
+                // Show or hide message field based on kind of chat
                 messageField.setVisible(canSend);
                 messageField.setManaged(canSend);
 
                 // Immediately fetch messages for the selected chat
                 ChatState selectedChat = chatCore.getChatState(selectedIndex);
                 if (selectedChat != null) {
-                    // Set this chat as active for fast polling
+                    // Set this chat as active, active chats are polled more frequently
                     chatCore.setActiveChatUuid(selectedChat.getRecipientUuid());
+
+                    // Thread to fetch messages of the selected chat
                     new Thread(() -> chatCore.getInAndOutBox().fetchMessagesImmediately(selectedChat)).start();
 
                     // Update and show chat header
@@ -130,9 +137,11 @@ public class ChatController {
         });
     }
 
+    // Rename the name of a chat
     private void handleRenameChat(int selectedIndex) {
         if (selectedIndex <= 0) return;
 
+        // Build a dialog to request the new name
         TextInputDialog dialog = new TextInputDialog();
         dialog.setTitle("Rename Chat");
         dialog.setHeaderText("Enter a new name for this chat:");
@@ -145,6 +154,7 @@ public class ChatController {
             dialog.getDialogPane().getStylesheets().addAll(stage.getScene().getStylesheets());
         }
 
+        // Show the dialog and process the result
         dialog.showAndWait().ifPresent(name -> {
             if (!name.trim().isEmpty()) {
                 chatCore.renameChat(selectedIndex, name.trim());
@@ -155,15 +165,15 @@ public class ChatController {
         });
     }
 
+    // Setup method to initialize the controller after dependencies are set
     public void setup() {
         userLabel.setText(chatCore.getCurrentUser());
-        // set the custom cell factory now that controller/current user is available
         messagesView.setCellFactory(lv -> new MessageCell());
         updateChatList();
         // Load icons for current theme
         updateIcons();
-        // register the UI callback in the chatcore/processor
 
+        // register the UI callback in the chatcore/processor
         chatCore.setOnMessageUpdateCallback(() -> { // method call to chatcore
             // refresh the view once a chat is selected
             int selectedIndex = chatList.getSelectionModel().getSelectedIndex();
@@ -173,9 +183,7 @@ public class ChatController {
         });
     }
 
-    /**
-     * Updates icons based on the current theme.
-     */
+    // Update icons based on the current theme
     public void updateIcons() {
         String theme = gui.isDarkTheme() ? "dark_icons" : "light_icons";
         String themedPath = "/org/example/icons/" + theme + "/";
@@ -183,23 +191,22 @@ public class ChatController {
         
         // User icon is colorful, works on any background
         if (userIcon != null) {
-            userIcon.setImage(new Image(getClass().getResourceAsStream(colorfulPath + "user.png")));
+            userIcon.setImage(new Image(Objects.requireNonNull(getClass().getResourceAsStream(colorfulPath + "user.png"))));
         }
         if (themeIcon != null) {
-            themeIcon.setImage(new Image(getClass().getResourceAsStream(themedPath + "toggle-theme.png")));
+            themeIcon.setImage(new Image(Objects.requireNonNull(getClass().getResourceAsStream(themedPath + "toggle-theme.png"))));
         }
         if (logoutIcon != null) {
-            logoutIcon.setImage(new Image(getClass().getResourceAsStream(colorfulPath + "logout-red.png")));
+            logoutIcon.setImage(new Image(Objects.requireNonNull(getClass().getResourceAsStream(colorfulPath + "logout-red.png"))));
         }
         if (sendIcon != null) {
-            sendIcon.setImage(new Image(getClass().getResourceAsStream(themedPath + "send.png")));
+            sendIcon.setImage(new Image(Objects.requireNonNull(getClass().getResourceAsStream(themedPath + "send.png"))));
         }
     }
 
     @FXML
     private void handleLogout() {
         chatCore.logout();
-        // The GUI class will handle the scene change
     }
 
     @FXML
@@ -207,12 +214,14 @@ public class ChatController {
         String text = messageField.getText().trim();
         if (text.isEmpty()) return;
 
+        // Get the selected chat index
         int selectedIndex = chatList.getSelectionModel().getSelectedIndex();
         if (selectedIndex <= 0) {
             new Alert(Alert.AlertType.WARNING, "Please select an existing chat first.").showAndWait();
             return;
         }
 
+        // Send the message via chat core
         chatCore.sendMessage(selectedIndex, text);
         refreshMessagesView(selectedIndex);
         messageField.clear();
@@ -225,6 +234,7 @@ public class ChatController {
         updateIcons();
     }
 
+    // Refreshes the messages view for the selected chat
     private void refreshMessagesView(int selectedIndex) {
         if (selectedIndex <= 0) {
             messagesView.getItems().clear();
@@ -232,12 +242,10 @@ public class ChatController {
         }
         List<Message> messages = chatCore.getMessagesForChat(selectedIndex);
         messagesView.getItems().setAll(messages);
-        messagesView.scrollTo(messages.size() - 1); // Scroll naar het nieuwste bericht
+        messagesView.scrollTo(messages.size() - 1); // Scroll to the latest message
     }
 
-    /**
-     * Updates the chat header with recipient information.
-     */
+    // Updates the chat header with recipient name and connection status
     private void updateChatHeader(ChatState chat) {
         if (chat == null) {
             chatHeader.setVisible(false);
@@ -266,12 +274,14 @@ public class ChatController {
         connectionStatusLabel.setText(status);
     }
 
+    // Updates the chat list from the chat core
     private void updateChatList() {
         if (chatList != null) {
             chatList.getItems().setAll(chatCore.getChatNames());
         }
     }
 
+    // Shows the dialog for creating a new chat
     private void showNewChatDialog() {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/org/example/NewChatView.fxml"));

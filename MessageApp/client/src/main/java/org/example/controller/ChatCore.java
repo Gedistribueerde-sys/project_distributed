@@ -20,7 +20,7 @@ import java.util.Optional;
 
 public class ChatCore {
     private static final Logger log = LoggerFactory.getLogger(ChatCore.class);
-    private final List<ChatState> activeChats = new ArrayList<>();
+    private final List<ChatState> userChats = new ArrayList<>();
     private final KeyStoreImpl keyStore = new KeyStoreImpl();
     private String currentUser;
     private String currentUserUuid;
@@ -28,16 +28,17 @@ public class ChatCore {
     // Track the currently displayed/active chat for fast polling
     private volatile String activeChatUuid = null;
 
+    // Callback for message updates
     private Runnable onMessageUpdateCallback;
 
+    // Database manager for persisting chat states and messages
     private DatabaseManager databaseManager;
 
     private final BooleanProperty loggedIn = new SimpleBooleanProperty(false);
     private final BooleanProperty loggedOut = new SimpleBooleanProperty(false);
-    private InAndOutBox inAndOutBox;
 
-    public ChatCore() {
-    }
+    // InAndOutBox for message processing
+    private InAndOutBox inAndOutBox;
 
     public BooleanProperty loggedInProperty() {
         return loggedIn;
@@ -47,8 +48,9 @@ public class ChatCore {
         return loggedOut;
     }
 
+    // User registration
     public boolean register(String username, String password) {
-        boolean created = keyStore.makeKeyStore(username, password);
+        boolean created = keyStore.makeKeyStore(username, password); // creates new keystore
         if (created) {
             log.info("Keystore created for user: {}", username);
 
@@ -67,8 +69,9 @@ public class ChatCore {
         return created;
     }
 
+    // User login
     public boolean login(String username, String password) {
-        boolean loaded = keyStore.loadKeyStore(username, password);
+        boolean loaded = keyStore.loadKeyStore(username, password); // loads existing keystore
         if (loaded) {
             currentUser = username;
 
@@ -89,7 +92,7 @@ public class ChatCore {
 
             // Restore chat states from database
             restoreChatStates();
-            // initialise the inand out box
+            // Initialize and start InAndOutBox for message processing
             inAndOutBox = new InAndOutBox(this, databaseManager);
             inAndOutBox.start();
 
@@ -103,7 +106,7 @@ public class ChatCore {
                 log.info("Message processor stopped gracefully.");
             }));
 
-            log.info("User {} logged in successfully with {} chat(s) restored.", username, activeChats.size());
+            log.info("User {} logged in successfully with {} chat(s) restored.", username, userChats.size());
             loggedIn.set(true);
             loggedOut.set(false);
         } else {
@@ -115,10 +118,6 @@ public class ChatCore {
 
     public String getCurrentUser() {
         return currentUser;
-    }
-
-    public String getCurrentUserUuid() {
-        return currentUserUuid;
     }
 
     public InAndOutBox getInAndOutBox() {
@@ -133,15 +132,13 @@ public class ChatCore {
         log.info("User {} logged out.", currentUser);
         currentUser = null;
         currentUserUuid = null;
-        activeChats.clear();
+        userChats.clear();
         databaseManager = null;
         loggedIn.set(false);
         loggedOut.set(true);
     }
 
-    /**
-     * Restores chat states from database after login.
-     */
+    // Restore chat states from the database
     private void restoreChatStates() {
         if (databaseManager == null) {
             log.error("Database manager not initialized");
@@ -164,7 +161,7 @@ public class ChatCore {
                     chat.getMessages().add(msg);
                 }
 
-                activeChats.add(chat);
+                userChats.add(chat);
                 log.info("Restored chat with {}: {} message(s), sendTag={}, recvTag={}", state.recipient(), messages.size(), state.sendTag(), state.recvTag());
             }
         } catch (Exception e) {
@@ -177,7 +174,7 @@ public class ChatCore {
     public String generateSendKeyInfo() throws Exception {
         ChatProto.KeyInfo keyInfo = ChatCrypto.generateBumpKeyInfo(currentUserUuid);
 
-        byte[] serialized = keyInfo.toByteArray();
+        byte[] serialized = keyInfo.toByteArray(); // Serialize the KeyInfo message
         return Base64.getEncoder().encodeToString(serialized);
     }
 
@@ -200,7 +197,7 @@ public class ChatCore {
             long recvIdx = 0;
             String recvTag = null;
 
-            // Parse receive key first, as it reliably gives us the recipient's UUID
+            // Parse receive key first if present, determine recipientUuid from it
             if (receiveKeyString != null && !receiveKeyString.trim().isEmpty()) {
                 byte[] decoded = Base64.getDecoder().decode(receiveKeyString.trim());
                 ChatProto.KeyInfo keyInfo = ChatProto.KeyInfo.parseFrom(decoded);
@@ -215,13 +212,10 @@ public class ChatCore {
                 log.info("Parsed receive key: idx={}, tag={}", recvIdx, recvTag);
             }
 
-            // Parse send key. Do NOT use it to determine recipientUuid
+            // Parse send key if present
             if (sendKeyString != null && !sendKeyString.trim().isEmpty()) {
                 byte[] decoded = Base64.getDecoder().decode(sendKeyString.trim());
                 ChatProto.KeyInfo keyInfo = ChatProto.KeyInfo.parseFrom(decoded);
-
-                // Do NOT set recipientUuid here, it's our UUID, not the recipient's
-                // recipientUuid = keyInfo.getSenderUuid(); // REMOVED
 
                 byte[] keyBytes = keyInfo.getKey().toByteArray();
                 sendSecretKey = new SecretKeySpec(keyBytes, 0, keyBytes.length, "AES");
@@ -243,18 +237,18 @@ public class ChatCore {
                 }
             }
 
-            // Check for duplicate
+            // Check for duplicate, prevent creating multiple chats with the same recipient UUID for database integrity
             String finalRecipientUuid = recipientUuid;
-            boolean exists = activeChats.stream().anyMatch(c -> c.recipientUuid.equals(finalRecipientUuid));
+            boolean exists = userChats.stream().anyMatch(c -> c.recipientUuid.equals(finalRecipientUuid));
             if (exists) {
                 log.error("Chat with {} (UUID: {}) already exists", recipientName, finalRecipientUuid);
                 return false;
             }
 
-
+            // Create and add new chat state, in-memory info for the chats
             ChatState chat = new ChatState(recipientName, recipientUuid, sendSecretKey, sendIdx, sendTag, recvSecretKey, recvIdx, recvTag);
 
-            activeChats.add(chat);
+            userChats.add(chat);
 
             // Persist to database
             if (databaseManager != null) {
@@ -276,15 +270,15 @@ public class ChatCore {
     public List<String> getChatNames() {
         List<String> names = new ArrayList<>();
         names.add("+ New Chat (BUMP)");
-        activeChats.forEach(chat -> names.add(chat.toString()));
+        userChats.forEach(chat -> names.add(chat.toString()));
         return names;
     }
 
     public void renameChat(int listIndex, String newName) {
         int idx = listIndex - 1;
-        if (idx < 0 || idx >= activeChats.size()) return;
+        if (idx < 0 || idx >= userChats.size()) return;
 
-        ChatState chat = activeChats.get(idx);
+        ChatState chat = userChats.get(idx);
         String oldName = chat.recipient;
 
         if (oldName.equals(newName)) return;
@@ -301,16 +295,16 @@ public class ChatCore {
         notifyMessageUpdate();
     }
 
-    // sendmessage is now mainly in the inandoutbox
+    // Send a message in the specified chat
     public void sendMessage(int chatIndex, String message) {
-        // 0 = "➕ New Chat (BUMP)", real chats start at 1
+        // chatIndex is 1-based from the GUI, adjust to 0-based, this comes from the creation new chat being index 0
         chatIndex -= 1;
-        if (chatIndex < 0 || chatIndex >= activeChats.size()) {
+        if (chatIndex < 0 || chatIndex >= userChats.size()) {
             log.error("No valid chat selected for sending message.");
             return;
         }
 
-        ChatState chat = activeChats.get(chatIndex);
+        ChatState chat = userChats.get(chatIndex);
 
         if (!chat.canSend()) {
             log.error("Cannot send - this is a receive-only chat with {}", chat.recipient);
@@ -318,88 +312,73 @@ public class ChatCore {
         }
 
         try {
-            // add it locally to the chat state and database as UNSENT
-            // this is for the ui
+            // add it locally to the chat state and database as PENDING
             chat.addSentMessage(message, currentUser);
-            notifyMessageUpdate();
+            notifyMessageUpdate(); // notify UI of message update
 
 
-            // save it in the db as unsent
+            // save it in the db as pending and send it
             if (databaseManager != null) {
-
+                // store message in the database
                 long messageId = databaseManager.addMessage(chat.recipient, chat.getRecipientUuid(), message, true, false);
+                // initiate sending immediately in a separate thread, for faster UI response
                 DatabaseManager.PendingMessage pendingMessage = new DatabaseManager.PendingMessage(messageId, chat.recipient, chat.getRecipientUuid(), message, null, null, null);
                 new Thread(() -> inAndOutBox.sendMessageImmediately(pendingMessage)).start();
-
             }
-
             log.info("Bericht lokaal gebufferd voor verzending naar {}", chat.recipient);
-
-            // the outboox is trying to send it once it has been added to the db
-
-
         } catch (Exception e) {
             log.error("Exception while buffering message", e);
         }
     }
 
+    // get the chatstate by its index in the list (1-based, as shown in GUI)
     public ChatState getChatState(int listIndex) {
         int idx = listIndex - 1;
-        if (idx < 0 || idx >= activeChats.size()) {
+        if (idx < 0 || idx >= userChats.size()) {
             return null;
         }
-        return activeChats.get(idx);
+        return userChats.get(idx);
     }
 
+    // get messages for a chat by its index in the list
     public List<Message> getMessagesForChat(int listIndex) {
         int idx = listIndex - 1;
-        if (idx < 0 || idx >= activeChats.size()) {
+        if (idx < 0 || idx >= userChats.size()) {
             return java.util.Collections.emptyList();
         }
-        ChatState chat = activeChats.get(idx);
+        ChatState chat = userChats.get(idx);
         return databaseManager.loadMessages(chat.recipient, chat.recipientUuid);
     }
 
+    // check if we can send messages to this chat by its index in the list
     public boolean canSendToChat(int listIndex) {
         int idx = listIndex - 1;
-        if (idx < 0 || idx >= activeChats.size()) return false;
-        return activeChats.get(idx).canSend();
+        if (idx < 0 || idx >= userChats.size()) return false;
+        return userChats.get(idx).canSend();
     }
 
-    // get the chatstate by recipient name
+    // get the chat state by recipient uuid
     public Optional<ChatState> getChatStateByRecipientUuid(String recipientUuid) {
-        return activeChats.stream().filter(c -> c.recipientUuid.equals(recipientUuid)).findFirst();
+        return userChats.stream().filter(c -> c.recipientUuid.equals(recipientUuid)).findFirst();
     }
 
 
     // gives a snapshot of the active chat states. Used by the outbox
     public List<ChatState> getActiveChatsSnapshot() {
-        synchronized (activeChats) {
-            return new ArrayList<>(activeChats);
+        synchronized (userChats) {
+            return new ArrayList<>(userChats);
         }
     }
 
-    /**
-     * Sets the currently displayed/active chat for fast polling.
-     * @param chatUuid The UUID of the active chat, or null if no chat is selected.
-     */
     public void setActiveChatUuid(String chatUuid) {
         this.activeChatUuid = chatUuid;
         log.debug("Active chat set to: {}", chatUuid);
     }
 
-    /**
-     * Gets the currently displayed/active chat UUID.
-     * @return The UUID of the active chat, or null if no chat is selected.
-     */
     public String getActiveChatUuid() {
         return activeChatUuid;
     }
 
-    /**
-     * Gets the ChatState for the currently active chat.
-     * @return Optional containing the active ChatState, or empty if no chat is selected.
-     */
     public Optional<ChatState> getActiveChatState() {
         String uuid = activeChatUuid;
         if (uuid == null) return Optional.empty();
