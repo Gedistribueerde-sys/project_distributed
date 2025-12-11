@@ -61,7 +61,7 @@
                             </tooltip>
                         </Button>
                         <Button fx:id="logoutButton" onAction="#handleLogout"
-                                styleClass="logout-button" text="Logout">
+                                styleClass="danger-button" text="Logout">
                             <graphic>
                                 <ImageView fx:id="logoutIcon" fitHeight="16" fitWidth="16" preserveRatio="true"/>
                             </graphic>

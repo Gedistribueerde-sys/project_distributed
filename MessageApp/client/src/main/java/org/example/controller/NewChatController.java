@@ -68,17 +68,18 @@ public class NewChatController {
      * Updates icons based on the current theme.
      */
     private void updateIcons() {
-        String theme = isDarkTheme ? "dark" : "light";
+        String theme = isDarkTheme ? "dark_icons" : "light_icons";
         String themedPath = "/org/example/icons/" + theme + "/";
+        String colorPath = "/org/example/icons/color_icons/";
 
         loadIcon(headerIcon, themedPath + "add-user.png");
         loadIcon(chatIcon, themedPath + "chat.png");
         loadIcon(keyIcon, themedPath + "key.png");
-        loadIcon(generateIcon, themedPath + "key.png");
+        loadIcon(generateIcon, themedPath + "key-button.png");
         loadIcon(copyIcon, themedPath + "copy.png");
         loadIcon(importIcon, themedPath + "import.png");
         loadIcon(createIcon, themedPath + "add.png");
-        loadIcon(cancelIcon, themedPath + "cancel.png");
+        loadIcon(cancelIcon, colorPath + "cancel-red.png");
     }
 
     private void loadIcon(ImageView imageView, String path) {

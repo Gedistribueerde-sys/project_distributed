@@ -105,7 +105,7 @@
                 <text>Create Chat</text>
             </Button>
             <Button fx:id="cancelButton" onAction="#handleCancel"
-                    maxWidth="Infinity" HBox.hgrow="ALWAYS" prefHeight="44" styleClass="secondary-button">
+                    maxWidth="Infinity" HBox.hgrow="ALWAYS" prefHeight="44" styleClass="danger-button">
                 <graphic>
                     <ImageView fx:id="cancelIcon" fitHeight="18" fitWidth="18" preserveRatio="true"/>
                 </graphic>

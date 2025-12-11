@@ -199,7 +199,7 @@
 }
 
 /* Logout button with icon */
-.logout-button {
+.danger-button {
     -fx-background-color: transparent;
     -fx-border-color: #F04747;
     -fx-border-width: 1.5;
@@ -211,11 +211,11 @@
     -fx-cursor: hand;
 }
 
-.logout-button:hover {
+.danger-button:hover {
     -fx-background-color: rgba(240, 71, 71, 0.1);
 }
 
-.logout-button:pressed {
+.danger-button:pressed {
     -fx-background-color: rgba(240, 71, 71, 0.15);
 }
 

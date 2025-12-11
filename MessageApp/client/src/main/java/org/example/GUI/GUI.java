@@ -49,7 +49,7 @@ public class GUI extends Application {
             StartupController startupController = loader.getController();
             startupController.setGui(this);
 
-            Scene scene = new Scene(root, 400, 250);
+            Scene scene = new Scene(root, 500, 500);
             applyTheme(scene);
             stage.setScene(scene);
         } catch (IOException e) {
@@ -73,7 +73,7 @@ public class GUI extends Application {
                 }
             });
 
-            Scene scene = new Scene(root, 400, 250);
+            Scene scene = new Scene(root, 500, 500);
             applyTheme(scene);
             stage.setScene(scene);
         } catch (IOException e) {
@@ -90,7 +90,7 @@ public class GUI extends Application {
             registerController.setController(chatCore);
             registerController.setGui(this);
 
-            Scene scene = new Scene(root, 400, 300);
+            Scene scene = new Scene(root, 500, 500);
             applyTheme(scene);
             stage.setScene(scene);
         } catch (IOException e) {

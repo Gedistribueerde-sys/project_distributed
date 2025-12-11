@@ -50,9 +50,9 @@ public class LoginController {
      */
     private void updateIcons() {
         if (gui == null) return;
-        String theme = gui.isDarkTheme() ? "dark" : "light";
+        String theme = gui.isDarkTheme() ? "dark_icons" : "light_icons";
         String themedPath = "/org/example/icons/" + theme + "/";
-        String colorfulPath = "/org/example/icons/";
+        String colorfulPath = "/org/example/icons/color_icons/";
 
         // User icon is colorful, works on any background
         loadIcon(pageIcon, colorfulPath + "user-large.png");

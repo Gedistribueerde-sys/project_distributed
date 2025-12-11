@@ -147,14 +147,13 @@ public class ChatListCell extends ListCell<String> {
                     .anyMatch(s -> s.contains("dark.css"));
         }
         
-        String theme = isDarkTheme ? "dark" : "light";
+        String theme = isDarkTheme ? "dark_icons" : "light_icons";
         String themedPath = "/org/example/icons/" + theme + "/";
-        String colorfulPath = "/org/example/icons/";
-        
+
         try {
             renameIcon.setImage(new Image(getClass().getResourceAsStream(themedPath + "edit.png")));
             // Use white add icon since it's on a colored (accent) background
-            addIcon.setImage(new Image(getClass().getResourceAsStream(colorfulPath + "add-white.png")));
+            addIcon.setImage(new Image(getClass().getResourceAsStream(themedPath + "add.png")));
         } catch (Exception e) {
             // Icon loading failed, use fallback
         }

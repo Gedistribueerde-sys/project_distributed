@@ -26,3 +26,4 @@ replay_pid*
 .idea
 MessageApp/client/data
 *.db
+MessageApp/client/src/main/resources/icons/deprecated

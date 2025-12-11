@@ -36,9 +36,9 @@ public class StartupController {
      */
     private void updateIcons() {
         if (gui == null) return;
-        String theme = gui.isDarkTheme() ? "dark" : "light";
+        String theme = gui.isDarkTheme() ? "dark_icons" : "light_icons";
         String themedPath = "/org/example/icons/" + theme + "/";
-        String colorfulPath = "/org/example/icons/";
+        String colorfulPath = "/org/example/icons/color_icons/";
 
         // Chat and secure icons are colorful, work on any background
         loadIcon(appIcon, colorfulPath + "secure-large.png");

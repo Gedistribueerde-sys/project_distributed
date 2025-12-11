@@ -177,9 +177,9 @@ public class ChatController {
      * Updates icons based on the current theme.
      */
     public void updateIcons() {
-        String theme = gui.isDarkTheme() ? "dark" : "light";
+        String theme = gui.isDarkTheme() ? "dark_icons" : "light_icons";
         String themedPath = "/org/example/icons/" + theme + "/";
-        String colorfulPath = "/org/example/icons/";
+        String colorfulPath = "/org/example/icons/color_icons/";
         
         // User icon is colorful, works on any background
         if (userIcon != null) {
@@ -189,7 +189,7 @@ public class ChatController {
             themeIcon.setImage(new Image(getClass().getResourceAsStream(themedPath + "toggle-theme.png")));
         }
         if (logoutIcon != null) {
-            logoutIcon.setImage(new Image(getClass().getResourceAsStream(themedPath + "logout.png")));
+            logoutIcon.setImage(new Image(getClass().getResourceAsStream(colorfulPath + "logout-red.png")));
         }
         if (sendIcon != null) {
             sendIcon.setImage(new Image(getClass().getResourceAsStream(themedPath + "send.png")));
