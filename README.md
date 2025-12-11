@@ -11,7 +11,10 @@ The project is divided into three Maven modules:
 -   `MessageApp/shared-lib`: A shared library containing common code used by both the client and the server, including the RMI interface and Protobuf message definitions.
 
 ## How to Build and Run
+You can run it with intellij.
+Just import the project, build with maven and start up 2 servers. Ports are hardcoded in the clients. Ports needed `1100` & `1099`.
 
+The approach if maven is installed. Run the command from the MessageApp folder!
 ### Prerequisites
 
 -   Java (JDK 16 or higher)
