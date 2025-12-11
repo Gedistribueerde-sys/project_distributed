@@ -15,15 +15,7 @@ import javafx.scene.paint.Color;
 import javafx.scene.text.Text;
 import javafx.util.Duration;
 
-/**
- * Custom ListCell that renders a Message as a modern chat bubble.
- * Features:
- * - Message bubbles with different colors for sent/received
- * - Status indicators (pending/sent/delivered) for outgoing messages
- * - Timestamps displayed below messages
- * - Avatar circles for visual appeal
- * - Smooth fade-in animations for new messages
- */
+// A custom ListCell for displaying messages in a chat application.
 public class MessageCell extends ListCell<Message> {
 
     private static final double AVATAR_SIZE = 32;
@@ -34,6 +26,7 @@ public class MessageCell extends ListCell<Message> {
         setStyle("-fx-background-color: transparent;");
     }
 
+    // Updates the cell's content based on the Message item.
     @Override
     protected void updateItem(Message item, boolean empty) {
         super.updateItem(item, empty);
@@ -120,9 +113,7 @@ public class MessageCell extends ListCell<Message> {
         setGraphic(container);
     }
 
-    /**
-     * Creates an avatar circle with the first letter of the sender's name.
-     */
+    // Creates an avatar with the sender's initial and a consistent background color.
     private StackPane createAvatar(String sender) {
         Circle circle = new Circle(AVATAR_SIZE / 2);
         circle.getStyleClass().add("avatar-circle");
@@ -147,9 +138,7 @@ public class MessageCell extends ListCell<Message> {
         return avatar;
     }
 
-    /**
-     * Generates a consistent color for an avatar based on the username.
-     */
+    // Generates a color based on the hash of the sender's name.
     private Color generateAvatarColor(String name) {
         if (name == null || name.isEmpty()) {
             return Color.GRAY;
@@ -161,9 +150,7 @@ public class MessageCell extends ListCell<Message> {
         return Color.hsb(hue, 0.6, 0.7);
     }
 
-    /**
-     * Returns the CSS class for the message status.
-     */
+    // Maps message status to corresponding CSS style class.
     private String getStatusStyleClass(Message.MessageStatus status) {
         return switch (status) {
             case PENDING -> "status-pending";
@@ -172,9 +159,7 @@ public class MessageCell extends ListCell<Message> {
         };
     }
 
-    /**
-     * Applies a subtle fade-in animation.
-     */
+    // Applies a fade-in animation to the message container.
     private void applyFadeIn(HBox container) {
         FadeTransition fade = new FadeTransition(Duration.millis(200), container);
         fade.setFromValue(0.0);
@@ -182,9 +167,7 @@ public class MessageCell extends ListCell<Message> {
         fade.play();
     }
 
-    /**
-     * Adds a subtle pulse effect for pending messages.
-     */
+    // Adds a subtle pulse effect to indicate a pending message.
     private void addPulseEffect(VBox bubble) {
         bubble.setOpacity(0.85);
     }

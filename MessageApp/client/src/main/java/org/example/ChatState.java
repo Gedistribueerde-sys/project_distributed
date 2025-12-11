@@ -60,9 +60,7 @@ public class ChatState {
         return recvKey != null;
     }
 
-    /**
-     * @return True if the chat is in a temporary backoff state due to a poison message.
-     */
+    // Check if the chat is currently in a poisoned backoff state, this indicates that recent messages have been rejected
     public boolean isPoisoned() {
         return System.currentTimeMillis() < poisonedBackoffUntil;
     }

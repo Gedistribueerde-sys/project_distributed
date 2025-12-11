@@ -16,10 +16,7 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Manages SQLite database per user for storing encrypted chat states and messages.
- * All sensitive data (keys, message content) is encrypted at rest using AES-GCM.
- */
+// Manages the SQLite database for storing user settings, chat states, and messages
 public class DatabaseManager {
     private static final Logger log = LoggerFactory.getLogger(DatabaseManager.class);
     private static final Path BASE_DIR = Paths.get("MessageApp", "client", "data");
@@ -43,6 +40,7 @@ public class DatabaseManager {
         log.info("Database initialized for user: {}", username);
     }
 
+    // Initializes the database schema if not already present
     private void initializeDatabase() {
         String createUserSettingsTable = "CREATE TABLE IF NOT EXISTS user_settings (key TEXT PRIMARY KEY, value TEXT)";
 
@@ -86,6 +84,7 @@ public class DatabaseManager {
         }
     }
 
+    // Saves the user's UUID to the database
     public void saveUserUuid(String uuid) {
         String sql = "INSERT OR REPLACE INTO user_settings (key, value) VALUES ('user_uuid', ?)";
         try (Connection conn = DriverManager.getConnection(url); PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -98,6 +97,7 @@ public class DatabaseManager {
         }
     }
 
+    // Retrieves the user's UUID from the database
     public String getUserUuid() {
         String sql = "SELECT value FROM user_settings WHERE key = 'user_uuid'";
         try (Connection conn = DriverManager.getConnection(url); PreparedStatement ps = conn.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
@@ -111,6 +111,7 @@ public class DatabaseManager {
         }
     }
 
+    // Inserts or updates the chat state for a given recipient
     public void upsertChatState(String recipient, String recipientUuid, byte[] sendKey, byte[] recvKey, long sIdx, long rIdx, String sendTag, String recvTag) {
         String sql = "INSERT INTO chat_sessions(recipient_uuid, recipient_name, send_key, receive_key, send_next_idx, receive_next_idx, send_tag, recv_tag) " +
                 "VALUES(?,?,?,?,?,?,?,?) " +
@@ -136,6 +137,7 @@ public class DatabaseManager {
         }
     }
 
+    // Renames a chat session
     public void renameChat(String recipientUuid, String newName) {
         log.info("Renaming chat {} to '{}'", recipientUuid, newName);
         String updateChatSql = "UPDATE chat_sessions SET recipient_name = ? WHERE recipient_uuid = ?";
@@ -151,6 +153,7 @@ public class DatabaseManager {
         }
     }
 
+    // Loads all chat states from the database
     public List<PersistedChatState> loadAllChatStates() {
         String sql = "SELECT * FROM chat_sessions";
         List<PersistedChatState> out = new ArrayList<>();
@@ -173,6 +176,7 @@ public class DatabaseManager {
         return out;
     }
 
+    // Adds a message to the database
     public long addMessage(String recipient, String recipientUuid, String messageText, boolean isSent, boolean isServerSent) {
         String sql = "INSERT INTO messages(recipient_uuid, timestamp, is_sent, is_server_sent, content) VALUES(?,?,?,?,?)";
         byte[] aad = CryptoUtils.makeAAD(username, recipientUuid);
@@ -198,6 +202,7 @@ public class DatabaseManager {
         }
     }
 
+    // Loads all messages for a given recipient
     public List<Message> loadMessages(String recipient, String recipientUuid) {
         String sql = "SELECT * FROM messages WHERE recipient_uuid = ? ORDER BY timestamp ";
         byte[] aad = CryptoUtils.makeAAD(username, recipientUuid);
@@ -238,11 +243,14 @@ public class DatabaseManager {
         return messages;
     }
 
+    // Represents the persisted chat state loaded from the database
     public record PersistedChatState(String recipient, String recipientUuid, byte[] sendKey, byte[] recvKey, long sendNextIdx, long recvNextIdx, String sendTag, String recvTag) {}
 
+    // Represents a pending outbox message with proposed next state values
     public record PendingMessage(long id, String recipient, String recipientUuid, String messageText,
                                     Long proposedNextIdx, String proposedNextTag, byte[] proposedNextKey) {}
 
+    // Loads all pending outbox messages that have been sent but not yet confirmed by the server
     public List<PendingMessage> getPendingOutboxMessages() {
         String sql = "SELECT m.id, c.recipient_name, m.recipient_uuid, m.content, " +
                 "m.proposed_next_idx, m.proposed_next_tag, m.proposed_next_key FROM messages m " +
@@ -274,11 +282,7 @@ public class DatabaseManager {
         return pending;
     }
 
-    /**
-     * Saves the proposed next values for a pending message before attempting to send.
-     * This ensures idempotent retries - if the client crashes after sending but before
-     * updating state, the retry will use the same values.
-     */
+    // Saves the proposed next state values for a sent message
     public void saveProposedSendValues(long messageId, String recipientUuid, long proposedNextIdx, String proposedNextTag, byte[] proposedNextKey) {
         String sql = "UPDATE messages SET proposed_next_idx = ?, proposed_next_tag = ?, proposed_next_key = ? WHERE id = ?";
         byte[] aad = CryptoUtils.makeAAD(username, recipientUuid);
@@ -295,6 +299,7 @@ public class DatabaseManager {
         }
     }
 
+    // Marks a message as sent by the server and updates the chat state transactionally
     public void markMessageAsSentAndUpdateState(long messageId, String recipient, byte[] newSendKey, long newSendIdx, String newSendTag) {
         String markSentSql = "UPDATE messages SET is_server_sent = 1, proposed_next_idx = NULL, proposed_next_tag = NULL, proposed_next_key = NULL WHERE id = ?";
         String updateStateSql = "UPDATE chat_sessions SET send_key = ?, send_next_idx = ?, send_tag = ? WHERE recipient_uuid = ?";
@@ -345,7 +350,8 @@ public class DatabaseManager {
             }
         }
     }
-    
+
+    // Commits the new message state within a transaction
     private void commitMessageState(byte[] newKey, long newIdx, String newTag, String updateStateSql, byte[] aad, Connection conn, String recipientParam) throws SQLException, GeneralSecurityException {
         try (PreparedStatement ps = conn.prepareStatement(updateStateSql)) {
             ps.setBytes(1, newKey == null ? null : CryptoUtils.encrypt(newKey, dbKey, aad));
@@ -357,6 +363,7 @@ public class DatabaseManager {
         conn.commit();
     }
 
+    // Adds a received message and updates the chat state transactionally
     public void addReceivedMessageAndUpdateState(String recipient, String recipientUuid, String messageText, long currentRecvIdx, String currentRecvTag, byte[] newRecvKey, long newRecvIdx, String newRecvTag) {
         String addMsgSql = "INSERT INTO messages(recipient_uuid, timestamp, is_sent, content) VALUES(?,?,?,?)";
         String addConfirmSql = "INSERT INTO pending_confirmations(message_id, recv_idx, recv_tag) VALUES(?,?,?)";
@@ -410,8 +417,10 @@ public class DatabaseManager {
         }
     }
 
+    // Represents an unconfirmed received message
     public record UnconfirmedMessage(long messageId, long recvIdx, String recvTag) {}
 
+    // Retrieves all unconfirmed received messages
     public List<UnconfirmedMessage> getUnconfirmedMessages() {
         String sql = "SELECT message_id, recv_idx, recv_tag FROM pending_confirmations";
         List<UnconfirmedMessage> messages = new ArrayList<>();
@@ -428,6 +437,7 @@ public class DatabaseManager {
         return messages;
     }
 
+    // Deletes a pending confirmation entry after the message has been confirmed
     public void deletePendingConfirmation(long messageId) {
         String sql = "DELETE FROM pending_confirmations WHERE message_id = ?";
         try (Connection conn = DriverManager.getConnection(url);

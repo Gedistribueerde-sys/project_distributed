@@ -3,26 +3,16 @@ package org.example.GUI;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
-/**
- * Message model used by the UI with delivery status tracking.
- *
- * @param sender    The username who sent the message
- * @param text      The message body
- * @param isSent    True if this is an outgoing message (sent by current user)
- * @param status    The delivery status of the message
- * @param timestamp The time when the message was created
- */
+// Represents a chat message with sender, text, status, and timestamp.
 public record Message(String sender, String text, boolean isSent, MessageStatus status, LocalDateTime timestamp) {
 
-    /**
-     * Message delivery status for visual feedback.
-     */
+    // Enumeration for message status with associated icon and tooltip.
     public enum MessageStatus {
-        /** Message is queued locally, not yet sent to server */
+        // Message is being sent
         PENDING("⏳", "Sending..."),
-        /** Message was sent to server successfully */
+        // Message was sent (for sent messages)
         SENT("✓", "Sent"),
-        /** Message was delivered/read (for received messages) */
+        // Message was delivered (for received messages)
         DELIVERED("✓✓", "Delivered");
 
         private final String icon;
@@ -42,25 +32,20 @@ public record Message(String sender, String text, boolean isSent, MessageStatus 
         }
     }
 
-    /**
-     * Backward-compatible constructor for existing code.
-     */
+
+    // Constructor with auto-determined status and timestamp.
     public Message(String sender, String text, boolean isSent) {
         this(sender, text, isSent,
              isSent ? MessageStatus.SENT : MessageStatus.DELIVERED,
              LocalDateTime.now());
     }
 
-    /**
-     * Constructor with status but auto-timestamp.
-     */
+    // Constructor with specified timestamp.
     public Message(String sender, String text, boolean isSent, MessageStatus status) {
         this(sender, text, isSent, status, LocalDateTime.now());
     }
 
-    /**
-     * Returns a formatted time string for display.
-     */
+    // Returns the formatted time string (HH:mm) of the message timestamp.
     public String getFormattedTime() {
         if (timestamp == null) return "";
         return timestamp.format(DateTimeFormatter.ofPattern("HH:mm"));

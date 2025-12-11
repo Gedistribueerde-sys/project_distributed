@@ -16,41 +16,26 @@ import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.scene.text.Text;
 
+import java.util.Objects;
 import java.util.function.Consumer;
 
-/**
- * Custom cell for the chat list with modern styling.
- * Features:
- * - Avatar with initials
- * - Chat name
- * - Connection status indicator (send/receive capability)
- * - Rename button with icon
- */
+// A custom ListCell for displaying chat items in a ListView.
 public class ChatListCell extends ListCell<String> {
 
     private static final double AVATAR_SIZE = 40;
 
     private final HBox container;
-    private final StackPane avatar;
     private final Circle avatarCircle;
     private final Text avatarInitial;
-    private final VBox textContainer;
     private final Label nameLabel;
     private final Label statusLabel;
     private final Button renameButton;
     private final ImageView renameIcon;
     private final ImageView addIcon;
-    private final Consumer<Integer> onRenameAction;
 
-    /**
-     * Creates a new chat list cell.
-     *
-     * @param onRenameAction Callback when rename button is clicked, receives the cell index
-     */
+    // Constructor accepts a callback for rename action
     public ChatListCell(Consumer<Integer> onRenameAction) {
-        this.onRenameAction = onRenameAction;
-
-        // Avatar
+        // Creating the avatar components
         avatarCircle = new Circle(AVATAR_SIZE / 2);
         avatarCircle.getStyleClass().add("chat-avatar-circle");
 
@@ -66,7 +51,7 @@ public class ChatListCell extends ListCell<String> {
         addIcon.setVisible(false);
         addIcon.setManaged(false);
 
-        avatar = new StackPane(avatarCircle, avatarInitial, addIcon);
+        StackPane avatar = new StackPane(avatarCircle, avatarInitial, addIcon);
         avatar.setMinSize(AVATAR_SIZE, AVATAR_SIZE);
         avatar.setMaxSize(AVATAR_SIZE, AVATAR_SIZE);
 
@@ -79,7 +64,7 @@ public class ChatListCell extends ListCell<String> {
         statusLabel = new Label();
         statusLabel.getStyleClass().add("chat-status-label");
 
-        textContainer = new VBox(2);
+        VBox textContainer = new VBox(2);
         textContainer.getChildren().addAll(nameLabel, statusLabel);
         textContainer.setAlignment(Pos.CENTER_LEFT);
         HBox.setHgrow(textContainer, Priority.ALWAYS);
@@ -112,16 +97,14 @@ public class ChatListCell extends ListCell<String> {
         });
     }
 
-    /**
-     * Updates text colors based on selection state.
-     * Uses CSS classes so the theme-specific CSS files can control the actual colors.
-     */
+    // Updates text colors based on selection state.
     private void updateTextColors(boolean isSelected) {
         if (isSelected) {
-            // Selected: white text on colored background
+            // Update to selected colors
             nameLabel.getStyleClass().removeAll("chat-name-unselected");
             statusLabel.getStyleClass().removeAll("chat-status-unselected");
 
+            // Inline styles for selected state
             nameLabel.setStyle("-fx-text-fill: white; -fx-font-weight: 700; -fx-font-size: 14px;");
             statusLabel.setStyle("-fx-text-fill: rgba(255,255,255,0.85); -fx-font-size: 12px;");
             renameButton.setStyle("-fx-text-fill: rgba(255,255,255,0.8); -fx-background-color: transparent;");
@@ -137,9 +120,7 @@ public class ChatListCell extends ListCell<String> {
         }
     }
 
-    /**
-     * Updates icons based on the current theme.
-     */
+    // Updates icons based on the current theme.
     private void updateIcons() {
         boolean isDarkTheme = false;
         if (getListView() != null && getListView().getScene() != null) {
@@ -151,14 +132,15 @@ public class ChatListCell extends ListCell<String> {
         String themedPath = "/org/example/icons/" + theme + "/";
 
         try {
-            renameIcon.setImage(new Image(getClass().getResourceAsStream(themedPath + "edit.png")));
+            renameIcon.setImage(new Image(Objects.requireNonNull(getClass().getResourceAsStream(themedPath + "edit.png"))));
             // Use white add icon since it's on a colored (accent) background
-            addIcon.setImage(new Image(getClass().getResourceAsStream(themedPath + "add.png")));
+            addIcon.setImage(new Image(Objects.requireNonNull(getClass().getResourceAsStream(themedPath + "add.png"))));
         } catch (Exception e) {
             // Icon loading failed, use fallback
         }
     }
 
+    // Updates the cell item based on its index and content.
     @Override
     protected void updateItem(String item, boolean empty) {
         super.updateItem(item, empty);
@@ -175,7 +157,6 @@ public class ChatListCell extends ListCell<String> {
         int index = getIndex();
 
         if (index == 0) {
-            // "New Chat" item - special styling
             setupNewChatItem();
         } else {
             // Regular chat item
@@ -248,9 +229,7 @@ public class ChatListCell extends ListCell<String> {
         renameButton.setManaged(true);
     }
 
-    /**
-     * Generates a consistent color for an avatar based on the name.
-     */
+    // Generates a color based on the hash of the chat name.
     private Color generateAvatarColor(String name) {
         if (name == null || name.isEmpty()) {
             return Color.GRAY;

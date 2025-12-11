@@ -18,10 +18,7 @@ import java.util.Random;
 
 import java.util.concurrent.locks.ReentrantLock;
 
-/**
- * Processes locally buffered messages (Outbox) and retrieves new messages (Inbox).
- * Handles retry logic and the connection with the BulletinBoard.
- */
+// Processes outgoing and incoming messages using RMI to communicate with BulletinBoard servers.
 public class InAndOutBox implements Runnable {
     private static final Logger log = LoggerFactory.getLogger(InAndOutBox.class);
     private final ChatCore chatCore;
@@ -31,7 +28,6 @@ public class InAndOutBox implements Runnable {
     private final Random random = new Random();
     private final ReentrantLock outboxLock = new ReentrantLock();
     private final ReentrantLock inboxLock = new ReentrantLock();
-
 
     private static final int[] RMI_PORTS = {1099, 1100};
     private static final int NUM_SERVERS = RMI_PORTS.length;
@@ -44,197 +40,186 @@ public class InAndOutBox implements Runnable {
         this.databaseManager = databaseManager;
     }
     
-        public void start() {
-            if (running) return;
-            running = true;
-            thread = new Thread(this, "Outbox-Inbox-Processor-Thread");
-            thread.start();
-            log.info("Message processor started.");
+    public void start() {
+        if (running) return;
+        running = true;
+        thread = new Thread(this, "Outbox-Inbox-Processor-Thread");
+        thread.start();
+        log.info("Message processor started.");
+    }
+
+    // Stops the message processing thread gracefully.
+    public void stop() {
+        running = false;
+        disconnect();
+        if (thread != null) {
+            thread.interrupt();
         }
+        log.info("Message processor stopping.");
+    }
     
-        /**
-         * Signals the message processor to stop.
-         * The shutdown is not immediate. If an RMI or database operation is in progress,
-         * the thread will complete the current message processing before terminating.
-         * This method interrupts the thread to wake it from sleep and relies on the
-         * run loop checking the `running` flag.
-         */
-        public void stop() {
-            running = false;
-            disconnect();
+    // Waits for the processing thread to finish.
+    public void join() {
+        try {
             if (thread != null) {
-                thread.interrupt();
+                thread.join();
             }
-            log.info("Message processor stopping.");
+        } catch (InterruptedException e) {
+            log.warn("Interrupted while waiting for message processor to stop.", e);
+            Thread.currentThread().interrupt();
         }
-    
-        /**
-         * Waits for the message processing thread to terminate.
-         * This should be called after `stop()` to ensure a graceful shutdown.
-         */
-        public void join() {
-            try {
-                if (thread != null) {
-                    thread.join();
-                }
-            } catch (InterruptedException e) {
-                log.warn("Interrupted while waiting for message processor to stop.", e);
-                Thread.currentThread().interrupt();
-            }
-        }
-    
-            private void processOutbox() {
-                long currentBackoff = 1000;
-                final int maxBackoff = 8000;
+    }
 
-                while (running) {
-                    if (!processOneOutboxMessageSafely()) {
-                        long sleepTime = currentBackoff + random.nextInt(1000);
-                        currentBackoff = Math.min(currentBackoff * 2, maxBackoff);
-                        try {
-                            Thread.sleep(sleepTime);
-                        } catch (InterruptedException e) {
-                            Thread.currentThread().interrupt();
-                            break;
-                        }
-                    } else {
-                        currentBackoff = 1000; // Reset backoff on success
-                    }
-                }
-            }
-            
-            private void processInbox() {
-                long currentBackoff = 1000;
-                final int maxBackoff = 8000;
-        
-                while (running) {
-                    if (!processBackgroundInboxMessages()) {
-                        long sleepTime = currentBackoff + random.nextInt(1000);
-                        currentBackoff = Math.min(currentBackoff * 2, maxBackoff);
-                        try {
-                            Thread.sleep(sleepTime);
-                        } catch (InterruptedException e) {
-                            Thread.currentThread().interrupt();
-                            break;
-                        }
-                    } else {
-                        currentBackoff = 1000; // Reset backoff on success
-                    }
-                }
-            }
+    // Exponential backoff loop for processing outbox messages.
+    private void processOutbox() {
+        long currentBackoff = 1000;
+        final int maxBackoff = 8000;
 
-            /**
-             * Fast polling loop for the active (displayed) chat.
-             * Uses low latency base interval with small jitter.
-             */
-            private void processActiveInbox() {
-                final int baseInterval = 300;  // Base polling interval in ms
-                final int maxJitter = 200;     // Maximum jitter in ms
-
-                while (running) {
-                    processActiveChatMessage();
-
-                    // Low latency with small jitter
-                    int sleepTime = baseInterval + random.nextInt(maxJitter);
-                    try {
-                        Thread.sleep(sleepTime);
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                        break;
-                    }
-                }
-            }
-
-            /**
-             * Processes the active chat with low latency.
-             * @return true if a message was fetched, false otherwise
-             */
-            private boolean processActiveChatMessage() {
-                if (databaseManager == null) return false;
-
-                Optional<ChatState> activeChatOpt = chatCore.getActiveChatState();
-                if (activeChatOpt.isEmpty()) return false;
-
-                ChatState activeChat = activeChatOpt.get();
-                if (!activeChat.canReceive() || activeChat.isPoisoned()) return false;
-
-                // Try to lock, if busy skip this cycle
-                if (!inboxLock.tryLock()) return false;
-
-                try {
-                    return fetchAndProcessMessage(activeChat);
-                } finally {
-                    inboxLock.unlock();
-                }
-            }
-
-            /**
-             * Processes background (non-active) chats with exponential backoff.
-             * @return true if any message was fetched, false otherwise
-             */
-            private boolean processBackgroundInboxMessages() {
-                if (databaseManager == null) return false;
-
-                if (!inboxLock.tryLock()) return false;
-
-                try {
-                    String activeChatUuid = chatCore.getActiveChatUuid();
-                    boolean didWork = false;
-
-                    for (ChatState chat : chatCore.getActiveChatsSnapshot()) {
-                        // Skip the active chat (handled by fast polling)
-                        if (activeChatUuid != null && chat.getRecipientUuid().equals(activeChatUuid)) {
-                            continue;
-                        }
-
-                        if (chat.canReceive() && !chat.isPoisoned()) {
-                            if (fetchAndProcessMessage(chat)) {
-                                didWork = true;
-                            }
-                        }
-                    }
-                    return didWork;
-                } finally {
-                    inboxLock.unlock();
-                }
-            }
-        private void disconnect() {
-            bulletinBoardStubs.clear();
-            log.info("All RMI connections disconnected.");
-        }
-    
-        @Override
-        public void run() {
-            long currentBackoff = 1000;
-            final int maxBackoff = 8000;
-            final int baseSleep = 500;
-    
-            new Thread(this::processOutbox, "Outbox-Processor-Thread").start();
-            new Thread(this::processInbox, "Background-Inbox-Processor-Thread").start();
-            new Thread(this::processActiveInbox, "Active-Inbox-Processor-Thread").start();
-
-            while (running) {
-                boolean didWork = false;
-    
-                if (!running) break;
-                didWork = processOneConfirmationSafely();
-    
-                long sleepTime;
-                if (didWork) {
-                    sleepTime = baseSleep;
-                    currentBackoff = 1000; // Reset backoff on success
-                } else {
-                    sleepTime = currentBackoff + random.nextInt(1000);
-                    currentBackoff = Math.min(currentBackoff * 2, maxBackoff);
-                }
-    
+        while (running) {
+            if (!processOneOutboxMessageSafely()) {
+                long sleepTime = currentBackoff + random.nextInt(1000);
+                currentBackoff = Math.min(currentBackoff * 2, maxBackoff);
                 try {
                     Thread.sleep(sleepTime);
                 } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
                     break;
                 }
+            } else {
+                currentBackoff = 1000; // Reset backoff on success
             }
         }
+    }
+
+    // Exponential backoff loop for processing background inbox messages.
+    private void processInbox() {
+        long currentBackoff = 1000;
+        final int maxBackoff = 8000;
+
+        while (running) {
+            if (!processBackgroundInboxMessages()) {
+                long sleepTime = currentBackoff + random.nextInt(1000);
+                currentBackoff = Math.min(currentBackoff * 2, maxBackoff);
+                try {
+                    Thread.sleep(sleepTime);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            } else {
+                currentBackoff = 1000; // Reset backoff on success
+            }
+        }
+    }
+
+    // Low-latency loop for processing the active inbox.
+    private void processActiveInbox() {
+        final int baseInterval = 300;  // Base polling interval in ms
+        final int maxJitter = 200;     // Maximum jitter in ms
+
+        while (running) {
+            processActiveChatMessage();
+
+            // Low latency with small jitter
+            int sleepTime = baseInterval + random.nextInt(maxJitter);
+            try {
+                Thread.sleep(sleepTime);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
+    }
+
+    // Processes messages for the currently active chat.
+    private void processActiveChatMessage() {
+        if (databaseManager == null) return;
+
+        Optional<ChatState> activeChatOpt = chatCore.getActiveChatState();
+        if (activeChatOpt.isEmpty()) return;
+
+        ChatState activeChat = activeChatOpt.get();
+        if (!activeChat.canReceive() || activeChat.isPoisoned()) return;
+
+        // Try to lock, if busy skip this cycle
+        if (!inboxLock.tryLock()) return;
+
+        try {
+            fetchAndProcessMessage(activeChat);
+        } finally {
+            inboxLock.unlock();
+        }
+    }
+
+    // Processes inbox messages for all non-active chats.
+    private boolean processBackgroundInboxMessages() {
+        if (databaseManager == null) return false;
+
+        if (!inboxLock.tryLock()) return false;
+
+        try {
+            String activeChatUuid = chatCore.getActiveChatUuid();
+            boolean didWork = false;
+
+            for (ChatState chat : chatCore.getActiveChatsSnapshot()) {
+                // Skip the active chat (handled by fast polling)
+                if (chat.getRecipientUuid().equals(activeChatUuid)) {
+                    continue;
+                }
+
+                if (chat.canReceive() && !chat.isPoisoned()) {
+                    if (fetchAndProcessMessage(chat)) {
+                        didWork = true;
+                    }
+                }
+            }
+            return didWork;
+        } finally {
+            inboxLock.unlock();
+        }
+    }
+
+    // Clears all RMI connections.
+    private void disconnect() {
+        bulletinBoardStubs.clear();
+        log.info("All RMI connections disconnected.");
+    }
+
+    // Main processing loop with exponential backoff for confirmations.
+    @Override
+    public void run() {
+        long currentBackoff = 1000;
+        final int maxBackoff = 8000;
+        final int baseSleep = 500;
+
+        new Thread(this::processOutbox, "Outbox-Processor-Thread").start();
+        new Thread(this::processInbox, "Background-Inbox-Processor-Thread").start();
+        new Thread(this::processActiveInbox, "Active-Inbox-Processor-Thread").start();
+
+        while (running) {
+            boolean didWork = false;
+
+            if (!running) break;
+            didWork = processOneConfirmationSafely();
+
+            long sleepTime;
+            if (didWork) {
+                sleepTime = baseSleep;
+                currentBackoff = 1000; // Reset backoff on success
+            } else {
+                sleepTime = currentBackoff + random.nextInt(1000);
+                currentBackoff = Math.min(currentBackoff * 2, maxBackoff);
+            }
+
+            try {
+                Thread.sleep(sleepTime);
+            } catch (InterruptedException e) {
+                break;
+            }
+        }
+    }
+
+    // Ensures there is an RMI connection to the server responsible for the given index.
     private Optional<BulletinBoard> ensureConnected(long requiredIndex) {
         int targetPort = getPortForIndex(requiredIndex);
         String targetHost = "localhost";
@@ -258,6 +243,7 @@ public class InAndOutBox implements Runnable {
         }
     }
 
+    // Immediately sends a pending message, bypassing the usual scheduling.
     public void sendMessageImmediately(DatabaseManager.PendingMessage pending) {
         outboxLock.lock();
         try {
@@ -267,6 +253,7 @@ public class InAndOutBox implements Runnable {
         }
     }
 
+    // Processes one outbox message safely with locking.
     private boolean processOneOutboxMessageSafely() {
         if (databaseManager == null) return false;
 
@@ -282,6 +269,7 @@ public class InAndOutBox implements Runnable {
         }
     }
 
+    // Processes a single pending outbox message.
     private boolean processMessage(DatabaseManager.PendingMessage pending) {
         Optional<ChatState> chatOptional = chatCore.getChatStateByRecipientUuid(pending.recipientUuid());
         if (chatOptional.isEmpty()) {
@@ -370,6 +358,7 @@ public class InAndOutBox implements Runnable {
         }
     }
 
+    // Immediately fetches messages for the given chat, bypassing the usual scheduling.
     public void fetchMessagesImmediately(ChatState chat) {
         if (!inboxLock.tryLock()) {
             log.warn("Skipping immediate fetch for {} as another fetch is in progress.", chat.recipient);
@@ -396,6 +385,7 @@ public class InAndOutBox implements Runnable {
         }
     }
 
+    // Fetches and processes a single message for the given chat.
     private boolean fetchAndProcessMessage(ChatState chat) {
         Optional<BulletinBoard> bulletinBoardOpt = ensureConnected(chat.recvIdx);
         if (bulletinBoardOpt.isEmpty()) return false;
@@ -443,6 +433,7 @@ public class InAndOutBox implements Runnable {
         }
     }
 
+    // Processes one pending confirmation safely with locking.
     private boolean processOneConfirmationSafely() {
         if (databaseManager == null) {
             return false;
@@ -480,7 +471,7 @@ public class InAndOutBox implements Runnable {
         }
     }
 
-
+    // Determines the RMI port for a given index.
     private int getPortForIndex(long idx) {
         int portIndex = (int) (Math.abs(idx) % NUM_SERVERS);
         return RMI_PORTS[portIndex];

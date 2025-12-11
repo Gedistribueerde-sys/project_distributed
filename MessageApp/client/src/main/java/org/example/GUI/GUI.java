@@ -41,6 +41,7 @@ public class GUI extends Application {
         stage.show();
     }
 
+    // Show the startup scene, this is the first scene displayed
     public void showStartupScene() {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/org/example/StartupView.fxml"));
@@ -57,6 +58,7 @@ public class GUI extends Application {
         }
     }
 
+    // Show the login scene
     public void showLoginScene() {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/org/example/LoginView.fxml"));
@@ -81,6 +83,7 @@ public class GUI extends Application {
         }
     }
 
+    // Show the registration scene
     public void showRegisterScene() {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/org/example/RegisterView.fxml"));
@@ -98,6 +101,7 @@ public class GUI extends Application {
         }
     }
 
+    // Show the main chat scene
     private void showChatScene() {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/org/example/ChatView.fxml"));
@@ -124,6 +128,7 @@ public class GUI extends Application {
         }
     }
 
+    // Apply the current theme to the given scene
     private void applyTheme(Scene scene) {
         scene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("/org/example/light.css")).toExternalForm());
         if (isDarkTheme) {
@@ -131,6 +136,7 @@ public class GUI extends Application {
         }
     }
 
+    // Toggle between light and dark themes
     public void toggleTheme() {
         isDarkTheme = !isDarkTheme;
         Scene scene = stage.getScene();
@@ -140,9 +146,6 @@ public class GUI extends Application {
         }
     }
 
-    /**
-     * Returns whether the dark theme is currently active.
-     */
     public boolean isDarkTheme() {
         return isDarkTheme;
     }
