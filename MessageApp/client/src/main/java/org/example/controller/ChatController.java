@@ -286,24 +286,26 @@ public class ChatController {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/org/example/NewChatView.fxml"));
             VBox page = loader.load();
-
+            //stage is buitenste deel van het venster
+            // scene is de werkelijke inhoud van het venster
             Stage dialogStage = new Stage();
             dialogStage.setTitle("Create New Chat");
-            dialogStage.initModality(Modality.WINDOW_MODAL);
-            dialogStage.initOwner(stage);
+            dialogStage.initModality(Modality.WINDOW_MODAL);// Maakt het venster modaal: de gebruiker moet dit sluiten voor hij het hoofdvenster weer kan gebruiken
+            dialogStage.initOwner(stage);// Stelt het hoofdvenster in als eigenaar van dit dialoogvenster
             Scene scene = new Scene(page);
-            
+
             // Apply the same theme as the main window
             scene.getStylesheets().addAll(stage.getScene().getStylesheets());
-            
-            dialogStage.setScene(scene);
 
+            dialogStage.setScene(scene);// Haalt de controller op die gekoppeld is aan NewChatView.fxml
+            // Geeft de hoofdcontroller / chatlogica door aan de new chat controller
             NewChatController newChatController = loader.getController();
             newChatController.setController(chatCore);
-            newChatController.setDialogStage(dialogStage);
+
+            newChatController.setDialogStage(dialogStage);// Geeft de Stage door zodat de controller het venster kan sluiten of aanpassen
 
             dialogStage.showAndWait();
-
+            // Toont het dialoogvenster en blokkeert de code tot het venster wordt gesloten
             // Always update chat list after dialog closes (in case chat was created)
             updateChatList();
 

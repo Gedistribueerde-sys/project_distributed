@@ -105,7 +105,10 @@ public class GUI extends Application {
     private void showChatScene() {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/org/example/ChatView.fxml"));
+
             Parent root = loader.load();
+            // Laadt het FXML-bestand, bouwt de volledige UI-hiërarchie op
+            // en geeft de root-node (bovenste JavaFX container) van die UI terug
 
             ChatController chatController = loader.getController();
             chatController.setController(chatCore);

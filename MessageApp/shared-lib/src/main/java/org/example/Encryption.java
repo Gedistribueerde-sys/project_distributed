@@ -10,9 +10,11 @@ public class Encryption {
     public static String preimageToTag(String preimage) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256"); // digest object
-            byte[] hash = digest.digest(preimage.getBytes(StandardCharsets.UTF_8)); // use digest object to create hash
+            byte[] hash = digest.digest(preimage.getBytes(StandardCharsets.UTF_8));
+            // Zet de preimage (String) om naar UTF-8 bytes en bereken er in één stap de SHA-256 hash van
 
             return Base64.getEncoder().encodeToString(hash);
+            // Encodeer de binaire hash naar een Base64-String zodat ze leesbaar en makkelijk opslaan/verzenden is
         } catch (NoSuchAlgorithmException e) {
             // In a normal JVM, SHA-256 is always present
             throw new RuntimeException("SHA-256 algorithm not available", e);

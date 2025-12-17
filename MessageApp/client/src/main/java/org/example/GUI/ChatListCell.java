@@ -18,7 +18,15 @@ import javafx.scene.text.Text;
 
 import java.util.Objects;
 import java.util.function.Consumer;
-
+/**
+ * De ChatListCell klasse is verantwoordelijk voor het uiterlijk van de chat-lijst aan de linkerkant van je applicatie, waar je tussen gesprekken schakelt.
+ * Het bouwt voor elke chat een rij met een gekleurde avatar, de naam van de gesprekspartner en een status-icoon dat de verbindingsrichting aangeeft.
+ * Daarnaast regelt deze klasse de interactie, zoals de 'hernoem'-knop en het visueel oplichten van een gesprek wanneer je het selecteert.
+ *
+ * In deze code heeft de ChatListCell een dubbele rol: de allereerste rij wordt opgemaakt als een speciale "New Chat" knop met een eigen icoontje en kleur.
+ * De rijen daarna worden automatisch gevuld met de gegevens van bestaande gesprekken,
+ * waarbij de tekst wordt opgeschoond (zoals het verwijderen van technische ID's) om de interface overzichtelijk te houden voor de gebruiker.
+ * */
 // A custom ListCell for displaying chat items in a ListView.
 public class ChatListCell extends ListCell<String> {
 

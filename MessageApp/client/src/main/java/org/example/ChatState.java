@@ -26,6 +26,7 @@ public class ChatState {
     private final List<Message> messages;
 
     // Backoff timestamp for handling poison messages.
+    // poisonedBackoffUntil is een timestamp die aangeeft tot wanneer een chat tijdelijk geblokkeerd is na het ontvangen van ongeldige (poison) berichten, om misbruik en instabiliteit te voorkomen.
     public long poisonedBackoffUntil = 0;
 
     public ChatState(String recipient, String recipientUuid, SecretKey sendKey, long sendIdx, String sendTag, SecretKey recvKey, long recvIdx, String recvTag) {

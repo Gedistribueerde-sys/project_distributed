@@ -243,6 +243,7 @@ public class BulletinBoardImpl implements BulletinBoard {
         }
 
         private int computeIndex(long idx) {
+            // Handle negative indices correctly
             return (int) ((idx % capacity) + capacity) % capacity;
         }
     }

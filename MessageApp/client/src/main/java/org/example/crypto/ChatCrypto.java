@@ -48,7 +48,7 @@ public class ChatCrypto {
         secureRandom.nextBytes(tagBytes);
         return tagBytes;
     }
-
+    //Base64 maakt binaire data veilig overdraagbaar als tekst
     public static String tagToBase64(byte[] tagBytes) {
         return Base64.getEncoder().encodeToString(tagBytes);
     }
@@ -58,37 +58,46 @@ public class ChatCrypto {
         Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
 
         // Generate random IV (12 bytes is recommended for GCM)
-        byte[] iv = new byte[12];
-        secureRandom.nextBytes(iv);
+        byte[] iv = new byte[12]; // Maakt een initialisatievector (IV) van 12 bytes aan voor AES-GCM
+        secureRandom.nextBytes(iv); // Vult de IV met cryptografisch veilige willekeurige bytes
 
-        GCMParameterSpec gcmSpec = new GCMParameterSpec(128, iv); // 128-bit authentication tag
-        cipher.init(Cipher.ENCRYPT_MODE, secretKey, gcmSpec);
+        GCMParameterSpec gcmSpec = new GCMParameterSpec(128, iv); // Definieert GCM-parameters met een 128-bit authenticatietag en de IV
+        //Authenticatietag (Auth Tag) Wordt berekend tijdens encryptie -> data niet aangepast zonder detectie
+        //Controleert integriteit en authenticiteit van de data
+        //Niet door jou aangemaakt, maar door AES-GCM Zit automatisch in de ciphertext
+        // IV voorkomt dat data voorspelbaar wordt, de auth tag voorkomt dat data vervalst wordt
 
-        byte[] ciphertext = cipher.doFinal(payload);
+        cipher.init(Cipher.ENCRYPT_MODE, secretKey, gcmSpec); // Initialiseert de cipher in encryptiemodus met de geheime sleutel en GCM-instellingen
+
+        byte[] ciphertext = cipher.doFinal(payload); // Versleutelt de payload en genereert de ciphertext
 
         // Prepend IV to ciphertext (needed for decryption)
-        byte[] result = new byte[iv.length + ciphertext.length];
-        System.arraycopy(iv, 0, result, 0, iv.length);
-        System.arraycopy(ciphertext, 0, result, iv.length, ciphertext.length);
+        byte[] result = new byte[iv.length + ciphertext.length]; // Maakt een array aan om IV en ciphertext samen op te slaan
+        System.arraycopy(iv, 0, result, 0, iv.length); // Kopieert de IV naar het begin van het resultaat
+        System.arraycopy(ciphertext, 0, result, iv.length, ciphertext.length); // Plakt de ciphertext direct na de IV
 
-        return result;
+        return result; // Geeft het gecombineerde resultaat (IV + ciphertext) terug
+
     }
 
     public static byte[] decryptPayloadBytes(byte[] encryptedPayload, SecretKey secretKey) throws Exception {
-        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+
+        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding"); // Maakt een Cipher aan voor AES in GCM-modus (met authenticatie) zonder padding
 
         // Extract IV from the beginning of the encrypted payload
-        byte[] iv = new byte[12];
-        System.arraycopy(encryptedPayload, 0, iv, 0, iv.length);
+        byte[] iv = new byte[12]; // Reserveert ruimte voor de IV (12 bytes, zoals bij encryptie gebruikt)
+        System.arraycopy(encryptedPayload, 0, iv, 0, iv.length); // Kopieert de eerste 12 bytes uit encryptedPayload naar iv
 
-        // Extract the actual ciphertext
-        byte[] ciphertext = new byte[encryptedPayload.length - iv.length];
-        System.arraycopy(encryptedPayload, iv.length, ciphertext, 0, ciphertext.length);
+                // Extract the actual ciphertext
+        byte[] ciphertext = new byte[encryptedPayload.length - iv.length]; // Maakt array voor de rest (ciphertext + auth tag zit hierin)
+        System.arraycopy(encryptedPayload, iv.length, ciphertext, 0, ciphertext.length); // Kopieert alles na de IV naar ciphertext
 
-        GCMParameterSpec gcmSpec = new GCMParameterSpec(128, iv);
-        cipher.init(Cipher.DECRYPT_MODE, secretKey, gcmSpec);
+        GCMParameterSpec gcmSpec = new GCMParameterSpec(128, iv); // Stelt GCM in met 128-bit tag-lengte en de juiste IV voor decryptie
+        cipher.init(Cipher.DECRYPT_MODE, secretKey, gcmSpec); // Initialiseert de cipher om te decrypten met dezelfde sleutel en IV
 
-        return cipher.doFinal(ciphertext);
+        return cipher.doFinal(ciphertext); // Decrypt + controleert de auth tag; faalt (exception) als data/sleutel/IV niet klopt
+
+
     }
 
     // Derive a new SecretKey from an old one using SHA-256
@@ -96,11 +105,11 @@ public class ChatCrypto {
         byte[] oldBytes = oldKey.getEncoded();
 
         // Hash the old key bytes using SHA-256
-        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+        MessageDigest digest = MessageDigest.getInstance("SHA-256"); // Maakt een MessageDigest-object aan dat het SHA-256 hash-algoritme gebruikt
         byte[] hash = digest.digest(oldBytes);
 
         // Use the hash as the new key
-        return new SecretKeySpec(hash, 0, 32, "AES");
+        return new SecretKeySpec(hash, 0, 32, "AES"); // GCM/NoPadding heeft hier geen betekenis het is een sleutel
 
     }
 }

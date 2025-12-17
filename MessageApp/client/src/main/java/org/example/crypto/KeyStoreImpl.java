@@ -14,7 +14,12 @@ public class KeyStoreImpl {
     private static final Logger log = LoggerFactory.getLogger(KeyStoreImpl.class);
     private KeyStore keyStore;
     private char[] keystorePassword;
+    // PKCS12 is de moderne, platformonafhankelijke standaard voor keystores (vervangt het oude JKS).
+    // Het ondersteunt sterke encryptie en wordt herkend door bijna alle tools en programmeertalen.
     private static final String KEYSTORE_TYPE = "PKCS12";
+
+    // De .p12 extensie (of soms .pfx) is de universele bestandsextensie voor PKCS12-bestanden.
+    // Hiermee is het bestand direct herkenbaar voor zowel het besturingssysteem als beveiligingssoftware.
     private static final String EXTENSION = ".p12";
     private static final String DB_KEY_ALIAS = "database-encryption-key";
 
@@ -39,9 +44,11 @@ public class KeyStoreImpl {
 
             // Generate database encryption key (DEK)
             SecretKey dbKey = generateDatabaseKey();
-            KeyStore.ProtectionParameter protParam = new KeyStore.PasswordProtection(password.toCharArray());
-            KeyStore.SecretKeyEntry skEntry = new KeyStore.SecretKeyEntry(dbKey);
-            ks.setEntry(DB_KEY_ALIAS, skEntry, protParam);
+            //Een ProtectionParameter bepaalt hoe een entry in een KeyStore wordt beveiligd.
+            KeyStore.ProtectionParameter protParam = new KeyStore.PasswordProtection(password.toCharArray()); // Maakt een bescherming aan voor de keystore-entry met het opgegeven wachtwoord
+            KeyStore.SecretKeyEntry skEntry = new KeyStore.SecretKeyEntry(dbKey); // Verpakt de geheime sleutel (dbKey) in een SecretKeyEntry voor opslag in de keystore
+            ks.setEntry(DB_KEY_ALIAS, skEntry, protParam); // Slaat de geheime sleutel op in de keystore onder de opgegeven alias, beveiligd met het wachtwoord
+
 
             try (FileOutputStream fos = new FileOutputStream(file)) {
                 ks.store(fos, password.toCharArray());
@@ -72,8 +79,8 @@ public class KeyStoreImpl {
             }
 
             KeyStore ks = KeyStore.getInstance(KEYSTORE_TYPE);
-            try (FileInputStream fis = new FileInputStream(file)) {
-                ks.load(fis, password.toCharArray());
+            try (FileInputStream fis = new FileInputStream(file)) { // Opent een FileInputStream naar het keystore-bestand en sluit deze automatisch na gebruik
+                ks.load(fis, password.toCharArray()); // Laadt de keystore-inhoud uit het bestand en ontgrendelt deze met het opgegeven wachtwoord
             }
 
             this.keyStore = ks;
@@ -94,12 +101,15 @@ public class KeyStoreImpl {
         }
 
         try {
-            KeyStore.ProtectionParameter protParam = new KeyStore.PasswordProtection(keystorePassword);
-            KeyStore.Entry entry = keyStore.getEntry(DB_KEY_ALIAS, protParam);
+            KeyStore.ProtectionParameter protParam = new KeyStore.PasswordProtection(keystorePassword); // Maakt een ProtectionParameter aan die aangeeft dat de keystore-entry beschermd is met een wachtwoord
+            // je moet zeggen hoe het beschermd is om het eruit te halen
 
-            if (entry instanceof KeyStore.SecretKeyEntry) {
-                return ((KeyStore.SecretKeyEntry) entry).getSecretKey();
+            KeyStore.Entry entry = keyStore.getEntry(DB_KEY_ALIAS, protParam); // Haalt de entry uit de keystore op met de opgegeven alias en het bijhorende wachtwoord
+
+            if (entry instanceof KeyStore.SecretKeyEntry) { // Controleert of de opgehaalde entry effectief een SecretKeyEntry is
+                return ((KeyStore.SecretKeyEntry) entry).getSecretKey(); // Cast de entry naar SecretKeyEntry en haalt de geheime sleutel eruit
             }
+
 
             log.error("Database key not found in keystore");
             return null;
@@ -111,9 +121,9 @@ public class KeyStoreImpl {
 
     // Generates a new AES database encryption key.
     private SecretKey generateDatabaseKey() throws NoSuchAlgorithmException {
-        KeyGenerator keyGen = KeyGenerator.getInstance("AES");
+        KeyGenerator keyGen = KeyGenerator.getInstance("AES"); // Maakt een KeyGenerator aan voor het AES-algoritme om een symmetrische sleutel te genereren
         keyGen.init(256);
-        return keyGen.generateKey();
+        return keyGen.generateKey();// Genereert en geeft een nieuwe willekeurige AES SecretKey terug
     }
 
     // Gets the keystore file path for the given username.

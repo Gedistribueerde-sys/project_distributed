@@ -34,32 +34,33 @@ public class ProofOfWork {
     public static ProofResult computeProof(String tag, long idx, int difficultyBits) {
         long startTime = System.currentTimeMillis();
 
-        // Start with a random nonce to avoid collisions when multiple clients compute simultaneously
-        long nonce = random.nextLong();
 
-        byte[] tagBytes = tag.getBytes(StandardCharsets.UTF_8);
-        ByteBuffer idxBuffer = ByteBuffer.allocate(Long.BYTES);
-        idxBuffer.putLong(idx);
-        byte[] idxBytes = idxBuffer.array();
+        long nonce = random.nextLong(); // Genereert een willekeurige startwaarde voor de nonce om gelijktijdige botsingen te vermijden
+        byte[] tagBytes = tag.getBytes(StandardCharsets.UTF_8); // Zet de tag (String) om naar bytes in UTF-8 zodat deze kan worden gehasht
+        ByteBuffer idxBuffer = ByteBuffer.allocate(Long.BYTES); // Maakt een ByteBuffer van 8 bytes om de long-waarde idx op te slaan
+        idxBuffer.putLong(idx); // Schrijft de waarde van idx in de buffer
+        byte[] idxBytes = idxBuffer.array(); // Haalt de byte-array uit de buffer zodat idx in binaire vorm gebruikt kan worden
+
 
         try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            MessageDigest digest = MessageDigest.getInstance("SHA-256"); // Maak een SHA-256 hash-object aan om data te hashen
 
-            while (true) {
-                digest.reset();
-                digest.update(tagBytes);
-                digest.update(idxBytes);
-                ByteBuffer nonceBuffer = ByteBuffer.allocate(Long.BYTES);
-                nonceBuffer.putLong(nonce);
-                digest.update(nonceBuffer.array());
-                byte[] hash = digest.digest();
-                // Check if hash meets difficulty requirement and return result if so
-                if (hasLeadingZeros(hash, difficultyBits)) {
-                    long endTime = System.currentTimeMillis();
-                    return new ProofResult(nonce, endTime - startTime);
+            while (true) { // Oneindige lus: blijf nonces proberen tot een geldige gevonden wordt
+
+                digest.reset(); // Reset de interne toestand van de hashfunctie voor een nieuwe berekening
+                digest.update(tagBytes); // Voeg de bytes van de tag toe aan de hash-input
+                digest.update(idxBytes); // Voeg de bytes van de index (idx) toe aan de hash-input
+                ByteBuffer nonceBuffer = ByteBuffer.allocate(Long.BYTES); // Maak een ByteBuffer van 8 bytes voor de nonce
+                nonceBuffer.putLong(nonce); // Zet de huidige nonce-waarde om naar bytes
+                digest.update(nonceBuffer.array()); // Voeg de nonce-bytes toe aan de hash-input (tag || idx || nonce)
+                byte[] hash = digest.digest(); // Bereken de SHA-256 hash (resultaat is 32 bytes)
+
+                if (hasLeadingZeros(hash, difficultyBits)) { // Controleer of de hash voldoet aan de moeilijkheid (leading zero bits)
+                    long endTime = System.currentTimeMillis(); // Registreer het tijdstip waarop een geldige nonce is gevonden
+                    return new ProofResult(nonce, endTime - startTime); // Geef de nonce en de berekende tijd terug
                 }
 
-                nonce++;
+                nonce++; // Verhoog de nonce en probeer opnieuw
             }
         } catch (NoSuchAlgorithmException e) {
             throw new RuntimeException("SHA-256 algorithm not available", e);
@@ -72,22 +73,24 @@ public class ProofOfWork {
 
     public static boolean verifyProof(String tag, long idx, long nonce, int difficultyBits) {
         try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            MessageDigest digest = MessageDigest.getInstance("SHA-256"); // Maak een SHA-256 hash-object aan om data te hashen
 
-            byte[] tagBytes = tag.getBytes(StandardCharsets.UTF_8);
-            ByteBuffer idxBuffer = ByteBuffer.allocate(Long.BYTES);
-            idxBuffer.putLong(idx);
-            byte[] idxBytes = idxBuffer.array();
+            byte[] tagBytes = tag.getBytes(StandardCharsets.UTF_8); // Zet de tag (String) om naar UTF-8 bytes zodat deze kan worden gehasht
 
-            ByteBuffer nonceBuffer = ByteBuffer.allocate(Long.BYTES);
-            nonceBuffer.putLong(nonce);
-            byte[] nonceBytes = nonceBuffer.array();
+            ByteBuffer idxBuffer = ByteBuffer.allocate(Long.BYTES); // Maakt een ByteBuffer van 8 bytes om de long-waarde idx op te slaan
+            idxBuffer.putLong(idx); // Schrijft de waarde van idx in de buffer
+            byte[] idxBytes = idxBuffer.array(); // Haalt de byte-array uit de buffer zodat idx in binaire vorm gebruikt kan worden
 
-            digest.update(tagBytes);
-            digest.update(idxBytes);
-            digest.update(nonceBytes);
+            ByteBuffer nonceBuffer = ByteBuffer.allocate(Long.BYTES); // Maakt een ByteBuffer van 8 bytes om de nonce (long) op te slaan
+            nonceBuffer.putLong(nonce); // Schrijft de huidige nonce-waarde in de buffer
+            byte[] nonceBytes = nonceBuffer.array(); // Haalt de byte-array uit de buffer zodat de nonce kan worden gehasht
 
-            byte[] hash = digest.digest();
+            digest.update(tagBytes); // Voeg de tag-bytes toe aan de hash-input
+            digest.update(idxBytes); // Voeg de index-bytes toe aan de hash-input
+            digest.update(nonceBytes); // Voeg de nonce-bytes toe aan de hash-input (tag || idx || nonce)
+
+            byte[] hash = digest.digest(); // Bereken de SHA-256 hash van alle toegevoegde bytes (resultaat is 32 bytes)
+
 
             return hasLeadingZeros(hash, difficultyBits);
         } catch (NoSuchAlgorithmException e) {
@@ -101,14 +104,19 @@ public class ProofOfWork {
 
         // Check full bytes (must all be zero)
         for (int i = 0; i < fullBytes; i++) {
+            // Loop door alle bytes die volledig nul moeten zijn
             if (hash[i] != 0) {
+                // Als een van deze bytes niet nul is, voldoet de hash niet
                 return false;
             }
         }
         // Check remaining bits in the next byte
         if (remainingBits > 0 && fullBytes < hash.length) {
+            // Controleer of er nog bits gecontroleerd moeten worden en of de byte bestaat
             int mask = 0xFF << (8 - remainingBits);
+            // Maak een bitmasker waarbij de eerste 'remainingBits' bits op 1 staan
             return (hash[fullBytes] & mask) == 0;
+            // Controleer of de vereiste leidende bits in de volgende byte nul zijn
         }
 
         return true;

@@ -3,6 +3,11 @@ package org.example.GUI;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
+/**
+ De Message klasse fungeert als de data-container (het model) die alle feitelijke informatie van een bericht opslaat.
+ Het houdt variabelen bij zoals de tekstinhoud, de naam van de afzender, het tijdstip van verzenden en de huidige status (bijv. verzonden of geleverd).
+ Deze klasse bevat zelf geen visuele elementen, maar levert de gegevens aan die nodig zijn om het bericht te kunnen tonen.
+ */
 // Represents a chat message with sender, text, status, and timestamp.
 public record Message(String sender, String text, boolean isSent, MessageStatus status, LocalDateTime timestamp) {
 
