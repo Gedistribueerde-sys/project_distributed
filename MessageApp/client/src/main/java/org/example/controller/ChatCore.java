@@ -94,7 +94,7 @@ public class ChatCore {
             restoreChatStates();
             // Initialize and start InAndOutBox for message processing
             inAndOutBox = new InAndOutBox(this, databaseManager);
-            inAndOutBox.start();
+            inAndOutBox.start(); // moet denkik niet meer gebruikt worden
 
             // Add a shutdown hook to ensure graceful shutdown of the message processor
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {

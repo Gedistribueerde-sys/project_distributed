@@ -39,12 +39,14 @@ public class InAndOutBox implements Runnable {
         this.chatCore = chatCore;
         this.databaseManager = databaseManager;
     }
-    
+    // moet denkik ook niet meer gebruikt worden
     public void start() {
         if (running) return;
         running = true;
-        thread = new Thread(this, "Outbox-Inbox-Processor-Thread");
-        thread.start();
+        new Thread(this::processOutbox, "Outbox-Processor-Thread").start();
+        new Thread(this::processInbox, "Background-Inbox-Processor-Thread").start();
+        new Thread(this::processActiveInbox, "Active-Inbox-Processor-Thread").start();
+
         log.info("Message processor started.");
     }
 
@@ -133,51 +135,52 @@ public class InAndOutBox implements Runnable {
 
     // Processes messages for the currently active chat.
     private void processActiveChatMessage() {
-        if (databaseManager == null) return;
+        if (databaseManager == null) return; // Stop als de database niet beschikbaar is
 
-        Optional<ChatState> activeChatOpt = chatCore.getActiveChatState();
-        if (activeChatOpt.isEmpty()) return;
+        Optional<ChatState> activeChatOpt = chatCore.getActiveChatState(); // Haalt de huidige actieve chat op (kan ontbreken)
+        if (activeChatOpt.isEmpty()) return; // Geen actieve chat → niets te doen
 
         ChatState activeChat = activeChatOpt.get();
-        if (!activeChat.canReceive() || activeChat.isPoisoned()) return;
+        if (!activeChat.canReceive() || activeChat.isPoisoned()) return; // canReceive = chat mag berichten ontvangen, isPoisoned = chat is in fout-/afsluitstatus
 
         // Try to lock, if busy skip this cycle
-        if (!inboxLock.tryLock()) return;
+        if (!inboxLock.tryLock()) return; // inboxLock voorkomt dat meerdere threads tegelijk inbox-berichten verwerken
 
         try {
-            fetchAndProcessMessage(activeChat);
+            fetchAndProcessMessage(activeChat); // Haalt één bericht op en verwerkt het voor de actieve chat
         } finally {
-            inboxLock.unlock();
+            inboxLock.unlock(); // Geeft de lock altijd vrij om deadlocks te voorkomen
         }
     }
 
     // Processes inbox messages for all non-active chats.
     private boolean processBackgroundInboxMessages() {
-        if (databaseManager == null) return false;
+        if (databaseManager == null) return false; // Stop als de database niet beschikbaar is
 
-        if (!inboxLock.tryLock()) return false;
+        if (!inboxLock.tryLock()) return false; // Zelfde lock als bij actieve chat om gelijktijdige inbox-verwerking te vermijden
 
         try {
-            String activeChatUuid = chatCore.getActiveChatUuid();
-            boolean didWork = false;
+            String activeChatUuid = chatCore.getActiveChatUuid(); // UUID van de actieve chat om die te kunnen overslaan
+            boolean didWork = false; // Houdt bij of er effectief een bericht verwerkt is
 
-            for (ChatState chat : chatCore.getActiveChatsSnapshot()) {
+            for (ChatState chat : chatCore.getActiveChatsSnapshot()) { // Snapshot om concurrente wijzigingen te vermijden
                 // Skip the active chat (handled by fast polling)
                 if (chat.getRecipientUuid().equals(activeChatUuid)) {
-                    continue;
+                    continue; // Actieve chat wordt apart en met hogere prioriteit verwerkt
                 }
 
-                if (chat.canReceive() && !chat.isPoisoned()) {
-                    if (fetchAndProcessMessage(chat)) {
-                        didWork = true;
+                if (chat.canReceive() && !chat.isPoisoned()) { // Alleen geldige, niet-geblokkeerde chats verwerken
+                    if (fetchAndProcessMessage(chat)) { // Probeert een bericht op te halen en te verwerken
+                        didWork = true; // Geeft aan dat er nuttig werk is verricht
                     }
                 }
             }
-            return didWork;
+            return didWork; // Wordt gebruikt om bv. polling/frequentie te sturen
         } finally {
-            inboxLock.unlock();
+            inboxLock.unlock(); // Zorgt dat andere inbox-verwerkingen weer kunnen doorgaan
         }
     }
+
 
     // Clears all RMI connections.
     private void disconnect() {
@@ -192,10 +195,8 @@ public class InAndOutBox implements Runnable {
         final int maxBackoff = 8000;
         final int baseSleep = 500;
 
-        new Thread(this::processOutbox, "Outbox-Processor-Thread").start();
-        new Thread(this::processInbox, "Background-Inbox-Processor-Thread").start();
-        new Thread(this::processActiveInbox, "Active-Inbox-Processor-Thread").start();
 
+        // dit moet er eigelijk uit , is vervangen door hierboven , maar het wordt niet meer gedaan
         while (running) {
             boolean didWork = false;
 
