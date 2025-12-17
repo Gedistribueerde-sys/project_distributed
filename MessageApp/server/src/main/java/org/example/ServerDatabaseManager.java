@@ -86,7 +86,7 @@ public class ServerDatabaseManager {
         }
         return conn;
     }
-    public record PersistedMessage(int cellIndex, int boardCapacity, String messageTag, byte[] messageValue) {}
+    public record PersistedMessage(int cellIndex, int boardCapacity, String messageTag, byte[] messageValue) {} //Dit is een Java record dat dient als een onveranderlijke data-container voor berichten die in de database worden opgeslagen.
     public List<Integer> getAllBoardCapacities() {String sql = "SELECT DISTINCT board_capacity FROM bulletin_board";
         // SQL-query die alle verschillende (unieke) board_capacity waarden selecteert
         List<Integer> capacities = new ArrayList<>();

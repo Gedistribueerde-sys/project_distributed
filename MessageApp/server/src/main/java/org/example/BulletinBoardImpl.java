@@ -21,6 +21,12 @@ public class BulletinBoardImpl implements BulletinBoard {
     private final transient ServerDatabaseManager dbManager;
 
     private volatile BoardGeneration activeBoard;
+    /**
+     * CopyOnWriteArrayList is een thread-safe lijst waarbij lezen zonder locks gebeurt en waarbij bij elke wijziging
+     * (toevoegen of verwijderen) een nieuwe kopie van de lijst wordt gemaakt, zodat iteraties veilig zijn en nooit een ConcurrentModificationException veroorzaken.
+     * In deze code is dit nodig omdat drainingBoards vaak wordt gelezen, soms wordt aangepast en tegelijkertijd door meerdere threads wordt gebruikt, waardoor veilige iteratie zonder expliciete synchronisatie essentieel is.
+     * thread safety zonder complexe locking-mechanismen.
+     */
     private final CopyOnWriteArrayList<BoardGeneration> drainingBoards = new CopyOnWriteArrayList<>();
 
     // --- Two-Phase Commit for Get ---
@@ -38,6 +44,13 @@ public class BulletinBoardImpl implements BulletinBoard {
             this.value = value;
         }
     }
+
+    /**
+     * checkedOutMessages wordt gebruikt om berichten die door een get() zijn opgehaald tijdelijk bij te houden totdat ze definitief bevestigd (confirm) of teruggezet worden bij een timeout.
+     * Dit ondersteunt een two-phase commit-achtig mechanisme dat voorkomt dat hetzelfde bericht meerdere keren tegelijk wordt verwerkt.
+     * Het gebruik van een ConcurrentHashMap is nodig omdat meerdere threads gelijktijdig berichten kunnen checken, bevestigen of opruimen, en deze datastructuur dit toelaat op een thread-safe manier zonder globale locks,
+     * met goede prestaties bij hoge gelijktijdigheid.
+     */
     private final Map<String, CheckedOutMessage> checkedOutMessages = new ConcurrentHashMap<>();
     private static final long CHECKOUT_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(20);
     // --------------------------------
@@ -46,30 +59,31 @@ public class BulletinBoardImpl implements BulletinBoard {
         this.dbManager = dbManager;
 
         // --- Database Recovery ---
-        List<ServerDatabaseManager.PersistedMessage> allMessages = dbManager.loadAllMessagesWithCapacity();
-        Map<Integer, List<ServerDatabaseManager.PersistedMessage>> messagesByCapacity = allMessages.stream()
-                .collect(Collectors.groupingBy(ServerDatabaseManager.PersistedMessage::boardCapacity));
+        List<ServerDatabaseManager.PersistedMessage> allMessages = dbManager.loadAllMessagesWithCapacity(); // alle berichten die in de db zitten
+        Map<Integer, List<ServerDatabaseManager.PersistedMessage>> messagesByCapacity = allMessages.stream() // Maakt een stream van alle uit de database geladen berichten
+                .collect(Collectors.groupingBy(ServerDatabaseManager.PersistedMessage::boardCapacity)); // Groepeert de berichten per board-capaciteit zodat berichten van verschillende boardgeneraties gescheiden worden
 
-        if (messagesByCapacity.isEmpty()) {
-            int initialSize = 1024;
-            this.activeBoard = new BoardGeneration(initialSize);
-            logger.info("No data in DB. Initialized new board size: {}", initialSize);
+        if (messagesByCapacity.isEmpty()) { // Controleert of er geen berichten in de database staan (lege of nieuwe server)
+            int initialSize = 1024; // Stelt een initiële capaciteit voor het eerste board in
+            this.activeBoard = new BoardGeneration(initialSize); // Maakt een nieuw actief board aan met de startgrootte
+            logger.info("No data in DB. Initialized new board size: {}", initialSize); // Logt dat een nieuw board is geïnitialiseerd
         } else {
-            int activeCapacity = messagesByCapacity.keySet().stream().max(Integer::compare).get();
+            int activeCapacity = messagesByCapacity.keySet().stream().max(Integer::compare).get(); // Bepaalt het grootste board (laatste generatie) dat actief moet worden
 
-            Map<Integer, BoardGeneration> boardsByCapacity = new HashMap<>();
-            for (Map.Entry<Integer, List<ServerDatabaseManager.PersistedMessage>> entry : messagesByCapacity.entrySet()) {
-                int capacity = entry.getKey();
-                List<ServerDatabaseManager.PersistedMessage> messages = entry.getValue();
-                BoardGeneration board = new BoardGeneration(capacity);
-                messages.forEach(board::loadMessage);
-                boardsByCapacity.put(capacity, board);
+            Map<Integer, BoardGeneration> boardsByCapacity = new HashMap<>(); // Map om boardgeneraties per capaciteit bij te houden
+            for (Map.Entry<Integer, List<ServerDatabaseManager.PersistedMessage>> entry : messagesByCapacity.entrySet()) { // Doorloopt alle capaciteiten uit de database
+                int capacity = entry.getKey(); // Haalt de board-capaciteit op
+                List<ServerDatabaseManager.PersistedMessage> messages = entry.getValue(); // Haalt alle berichten voor die capaciteit op
+                BoardGeneration board = new BoardGeneration(capacity); // Maakt een boardgeneratie aan met dezelfde capaciteit
+                messages.forEach(board::loadMessage); // Laadt alle berichten opnieuw in het board
+                boardsByCapacity.put(capacity, board); // Slaat het board op per capaciteit
             }
 
-            this.activeBoard = boardsByCapacity.remove(activeCapacity);
-            this.drainingBoards.addAll(boardsByCapacity.values());
+            this.activeBoard = boardsByCapacity.remove(activeCapacity); // Stelt het grootste board in als actief board
+            this.drainingBoards.addAll(boardsByCapacity.values()); // Verplaatst oudere boards naar de draining-lijst
 
-            String drainingSizes = drainingBoards.stream().map(b -> String.valueOf(b.capacity)).collect(Collectors.joining(", "));
+            String drainingSizes = drainingBoards.stream().map(b -> String.valueOf(b.capacity)).collect(Collectors.joining(", ")); // Maakt een string met de capaciteiten van de draining boards voor logging
+
             logger.info("Server loaded. Active size: {}. Draining sizes: [{}]", this.activeBoard.capacity, drainingSizes.isEmpty() ? "None" : drainingSizes);
         }
     }
@@ -116,7 +130,7 @@ public class BulletinBoardImpl implements BulletinBoard {
         }
         return result;
     }
-
+    //De confirm-methode bevestigt definitief dat een opgehaald bericht correct is verwerkt en zorgt ervoor dat het permanent wordt verwijderd, zowel uit het geheugen als uit de database.
     @Override
     public boolean confirm(long idx, String tag) throws RemoteException {
         logger.debug("CONFIRM received for tag: {}", tag);
@@ -141,22 +155,23 @@ public class BulletinBoardImpl implements BulletinBoard {
             return true;
         }
     }
+    //Elk opgehaald bericht volgt een verplicht confirm-pad; zonder confirm wordt het bericht na een timeout automatisch hersteld om verlies te voorkomen.
+    public void cleanUpOrphanedMessages() { // Ruimt berichten op die zijn opgehaald maar nooit bevestigd (timeout)
+        long now = System.currentTimeMillis(); // Huidige tijd om te bepalen hoe lang berichten al uitgecheckt zijn
+        List<String> orphanedTags = new ArrayList<>(); // Lijst om tags van verlopen checkout-berichten bij te houden
 
-    public void cleanUpOrphanedMessages() {
-        long now = System.currentTimeMillis();
-        List<String> orphanedTags = new ArrayList<>();
-
-        for (CheckedOutMessage checkedOut : checkedOutMessages.values()) {
-            if (now - checkedOut.timestamp > CHECKOUT_TIMEOUT_MS) {
+        for (CheckedOutMessage checkedOut : checkedOutMessages.values()) { // Doorloopt alle tijdelijk uitgecheckte berichten
+            if (now - checkedOut.timestamp > CHECKOUT_TIMEOUT_MS) { // Controleert of het bericht langer dan toegestaan in checkout staat
                 // Return the message to its original board
-                checkedOut.board.putBack(checkedOut.idx, checkedOut.tag, checkedOut.value);
-                orphanedTags.add(checkedOut.tag);
-                logger.warn("TIMED OUT message with tag: {}. Returned to board.", checkedOut.tag);
+                checkedOut.board.putBack(checkedOut.idx, checkedOut.tag, checkedOut.value); // Zet het bericht terug in het oorspronkelijke board
+                orphanedTags.add(checkedOut.tag); // Markeert dit bericht om uit checkedOutMessages te verwijderen
+                logger.warn("TIMED OUT message with tag: {}. Returned to board.", checkedOut.tag); // Logt dat het bericht is teruggezet na timeout
             }
         }
         // Remove all orphaned messages from the checkout list
-        orphanedTags.forEach(checkedOutMessages::remove);
+        orphanedTags.forEach(checkedOutMessages::remove); // Verwijdert alle verlopen berichten uit de checkout-registratie
     }
+
 
 
     private synchronized void checkAndResize() {
@@ -181,7 +196,7 @@ public class BulletinBoardImpl implements BulletinBoard {
                 buckets.add(new ConcurrentHashMap<>());
             }
         }
-
+        // onveranderelijke records inladen vanuit de database bij serverstart
         public void loadMessage(ServerDatabaseManager.PersistedMessage msg) {
             int index = msg.cellIndex();
             if (index >= 0 && index < this.capacity) {
@@ -191,7 +206,7 @@ public class BulletinBoardImpl implements BulletinBoard {
                 logger.error("LOAD ERROR: Message tag {} stored with index {} does not fit in board size {}. Data integrity compromised.", msg.messageTag(), index, this.capacity);
             }
         }
-
+        // een bericht terugplaatsen in het board (bij timeout)
         public void putBack(long idx, String tag, byte[] value) {
             int index = computeIndex(idx);
             Map<String, byte[]> cell = buckets.get(index);
