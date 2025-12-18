@@ -98,6 +98,13 @@ public class DatabaseManager {
     }
 
     // Retrieves the user's UUID from the database
+
+    // try-with-resources wordt gebruikt zodat Connection, PreparedStatement en ResultSet
+    // automatisch worden gesloten, ook bij fouten (voorkomt memory leaks).
+    // Connection: maakt de verbinding met de database.
+    // PreparedStatement: voert de SQL-query veilig en efficiënt uit.
+    // ResultSet: bevat het resultaat van de SELECT-query.
+    // Samen zorgen ze voor correcte, veilige en onderhoudbare database-toegang.
     public String getUserUuid() {
         String sql = "SELECT value FROM user_settings WHERE key = 'user_uuid'";
         try (Connection conn = DriverManager.getConnection(url); PreparedStatement ps = conn.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
@@ -119,7 +126,12 @@ public class DatabaseManager {
                 "recipient_name=excluded.recipient_name, send_key=excluded.send_key, receive_key=excluded.receive_key, " +
                 "send_next_idx=excluded.send_next_idx, receive_next_idx=excluded.receive_next_idx, " +
                 "send_tag=excluded.send_tag, recv_tag=excluded.recv_tag";
+        // AAD (Additional Authenticated Data) wordt aangemaakt voor extra beveiliging.
+        // Het zorgt ervoor dat de versleutelde data alleen geldig is voor deze specifieke
+        // combinatie van gebruiker (username) en ontvanger (recipientUuid).
+        // Zo kan een bericht niet geldig hergebruikt worden in een andere context.
         byte[] aad = CryptoUtils.makeAAD(username, recipientUuid);
+
         try (Connection conn = DriverManager.getConnection(url); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, recipientUuid);
             ps.setString(2, recipient);
@@ -189,6 +201,12 @@ public class DatabaseManager {
             ps.executeUpdate();
             log.debug("Saved message for recipient: {}", recipient);
 
+            // Deze ResultSet bevat de automatisch gegenereerde sleutels (meestal de primary key)
+            // van de zojuist ingevoegde database-rij.
+            // ps.getGeneratedKeys() haalt dat ID op dat door de database is aangemaakt.
+            // Met rs.next() ga je naar de eerste (en enige) sleutel.
+            // Zo kan het bericht later opnieuw worden teruggevonden of geüpdatet.
+            // precompilen van de statement
             try (ResultSet generatedKeys = ps.getGeneratedKeys()) {
                 if (generatedKeys.next()) {
                     return generatedKeys.getLong(1);
@@ -308,7 +326,7 @@ public class DatabaseManager {
         Connection conn = null;
         try {
             conn = DriverManager.getConnection(url);
-            conn.setAutoCommit(false);
+            conn.setAutoCommit(false); // 2 dingen tegelijk doen
 
             String recipientUuid;
             try (PreparedStatement ps = conn.prepareStatement(getUuidSql)) {
@@ -400,7 +418,7 @@ public class DatabaseManager {
             log.error("Transaction failed for received message for {}. Rolling back.", recipient, e);
             if (conn != null) {
                 try {
-                    conn.rollback();
+                    conn.rollback(); //wordt gebruikt om alle databasewijzigingen in deze transactie ongedaan te maken als er ergens een fout optreedt, zodat je database consistent blijft.
                 } catch (SQLException ex) {
                     log.error("Failed to rollback transaction", ex);
                 }

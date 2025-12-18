@@ -76,7 +76,7 @@ public class ProofOfWork {
             MessageDigest digest = MessageDigest.getInstance("SHA-256"); // Maak een SHA-256 hash-object aan om data te hashen
 
             byte[] tagBytes = tag.getBytes(StandardCharsets.UTF_8); // Zet de tag (String) om naar UTF-8 bytes zodat deze kan worden gehasht
-
+            // je hebt geen funties om long naar binary om te zette
             ByteBuffer idxBuffer = ByteBuffer.allocate(Long.BYTES); // Maakt een ByteBuffer van 8 bytes om de long-waarde idx op te slaan
             idxBuffer.putLong(idx); // Schrijft de waarde van idx in de buffer
             byte[] idxBytes = idxBuffer.array(); // Haalt de byte-array uit de buffer zodat idx in binaire vorm gebruikt kan worden
@@ -114,6 +114,8 @@ public class ProofOfWork {
         if (remainingBits > 0 && fullBytes < hash.length) {
             // Controleer of er nog bits gecontroleerd moeten worden en of de byte bestaat
             int mask = 0xFF << (8 - remainingBits);
+            //0xFF = 11111111
+            // 0xFF > 5 = 00001111
             // Maak een bitmasker waarbij de eerste 'remainingBits' bits op 1 staan
             return (hash[fullBytes] & mask) == 0;
             // Controleer of de vereiste leidende bits in de volgende byte nul zijn

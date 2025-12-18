@@ -14,7 +14,7 @@ import java.util.Base64;
 public class ChatCrypto {
     private static final Logger log = LoggerFactory.getLogger(ChatCrypto.class);
     static final private SecureRandom secureRandom = new SecureRandom();
-
+    //
     // Generate a new KeyInfo for initiating a chat (both send and receive)
     public static ChatProto.KeyInfo generateBumpKeyInfo(String senderUuid) throws Exception {
         long initialIdx = makeNewIdx();

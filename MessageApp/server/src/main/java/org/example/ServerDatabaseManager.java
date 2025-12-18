@@ -86,6 +86,13 @@ public class ServerDatabaseManager {
         }
         return conn;
     }
+
+    /**
+     *
+     PersistedMessage is een record (datacontainer) dat bedoeld is om berichten voor te stellen.
+     getAllBoardCapacities() haalt alleen getallen (ints) op uit de database, geen berichten.
+     Omdat je hier geen volledige rij als object nodig hebt, is het overkill om PersistedMessage te gebruiken.
+     */
     public record PersistedMessage(int cellIndex, int boardCapacity, String messageTag, byte[] messageValue) {} //Dit is een Java record dat dient als een onveranderlijke data-container voor berichten die in de database worden opgeslagen.
     public List<Integer> getAllBoardCapacities() {String sql = "SELECT DISTINCT board_capacity FROM bulletin_board";
         // SQL-query die alle verschillende (unieke) board_capacity waarden selecteert

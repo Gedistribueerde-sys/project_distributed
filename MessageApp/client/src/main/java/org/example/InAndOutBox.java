@@ -255,6 +255,7 @@ public class InAndOutBox implements Runnable {
     }
 
     // Processes one outbox message safely with locking.
+    // eerst getten van de pendin gmessages vorodat je nieuwe verzend
     private boolean processOneOutboxMessageSafely() {
         if (databaseManager == null) return false;
 

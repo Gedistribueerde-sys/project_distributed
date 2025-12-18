@@ -18,6 +18,14 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * Optional<T> is een containerobject dat wel of geen waarde van type T kan bevatten.
+ *
+ * Het wordt gebruikt om null te vermijden en expliciet te maken dat een waarde kan ontbreken.
+ *
+ * Met methodes zoals isPresent(), orElse() en ifPresent() kan je veilig met die waarde werken zonder NullPointerException.
+ Hier wordt Optional<ChatState> gebruikt om expliciet en veilig aan te geven dat een chat mogelijk niet bestaat, zonder null te moeten teruggeven
+ */
 public class ChatCore {
     private static final Logger log = LoggerFactory.getLogger(ChatCore.class);
     private final List<ChatState> userChats = new ArrayList<>();
@@ -33,7 +41,9 @@ public class ChatCore {
 
     // Database manager for persisting chat states and messages
     private DatabaseManager databaseManager;
-
+    // Waarom een BooleanProperty i.p.v. een gewone boolean?
+    // - Omdat JavaFX Properties "observable" zijn: de UI kan automatisch mee updaten
+    //   wanneer de waarde verandert (binding / listeners).
     private final BooleanProperty loggedIn = new SimpleBooleanProperty(false);
     private final BooleanProperty loggedOut = new SimpleBooleanProperty(false);
 
@@ -147,7 +157,6 @@ public class ChatCore {
 
         try {
             List<DatabaseManager.PersistedChatState> persistedStates = databaseManager.loadAllChatStates();
-
             // For each persisted chat state, recreate ChatState and load messages
             for (DatabaseManager.PersistedChatState state : persistedStates) {
                 SecretKey sendKey = state.sendKey() == null ? null : new SecretKeySpec(state.sendKey(), "AES");
@@ -228,7 +237,7 @@ public class ChatCore {
             if (recipientUuid == null) {
                 // If no receive key was provided, but a send key was, generate a random UUID as a placeholder
                 if (sendKeyString != null && !sendKeyString.trim().isEmpty()) {
-                    recipientUuid = java.util.UUID.randomUUID().toString();
+                    recipientUuid = java.util.UUID.randomUUID().toString(); //universally unique identifier (UUID).
                     log.warn("No receive key provided. Generating a random placeholder UUID for the recipient: {}. This may need to be updated later.", recipientUuid);
                 } else {
                     // No keys at all, this is an error

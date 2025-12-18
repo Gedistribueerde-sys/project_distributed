@@ -11,6 +11,8 @@ import java.security.SecureRandom;
 // Utility class for AES-GCM encryption and decryption with AAD support
 public final class CryptoUtils {
     private static final String ALGO = "AES/GCM/NoPadding";
+
+    //AES/GCM/NoPadding gebruikt géén padding omdat GCM werkt als een stream cipher (CTR-mode).
     // AES = Advanced Encryption Standard, een sterke symmetrische encryptie die vandaag de standaard is
     // GCM = Galois/Counter Mode, een AEAD-modus die zowel encryptie als authenticatie biedt
     //     → Encryptie: verbergt de inhoud van de data
@@ -22,6 +24,9 @@ public final class CryptoUtils {
     //     → Padding kan zelfs onveilig zijn (bv. padding oracle attacks bij CBC)
     //     → Door NoPadding te gebruiken vermijd je extra aanvalsvectoren en fouten
     // Samengevat: AES/GCM/NoPadding is modern, veilig, efficiënt en volgt best practices
+
+    //Een block cipher (zoals AES in CBC) versleutelt data in vaste blokken van 16 bytes en heeft daarom vaak padding nodig.
+    //Een stream cipher (zoals AES in CTR of GCM) genereert een sleutelstroom en versleutelt byte per byte, waardoor geen padding nodig is en het beter geschikt is voor berichten.
     private static final int IV_LENGTH = 12;
     // Lengte van de Initialization Vector (nonce) in bytes
     // 12 bytes (96 bits) is de officieel aanbevolen en veiligste lengte voor AES-GCM
